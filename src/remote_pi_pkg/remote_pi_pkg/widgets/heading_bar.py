@@ -12,6 +12,8 @@ class HeadingBarWidget(QWidget):
         super().__init__(parent)
         self.heading = 0.0  # degrees (0 = NORTH)
         self.setMinimumHeight(80)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setStyleSheet("background: transparent;")
 
     def update_heading(self, heading):
         self.heading = heading % 360
@@ -25,7 +27,7 @@ class HeadingBarWidget(QWidget):
         center_x = width // 2
         center_y = height // 2
 
-        painter.fillRect(rect, QColor("#141414"))
+
         pen = QPen(QColor("#00FF00"), 2)
         painter.setPen(pen)
         painter.drawLine(0, center_y, width, center_y)

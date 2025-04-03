@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QTextEdit
+from PyQt5.QtCore import Qt
 
 class ControlStatusField(QTextEdit):
     """
@@ -9,11 +10,7 @@ class ControlStatusField(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
-        self.setStyleSheet("""
-            QTextEdit {
-                background-color: #222222;
-                border: 2px solid #00FFFF;
-                padding: 5px;
-            }
-        """)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+
+
         self.setMinimumHeight(150)

@@ -13,6 +13,8 @@ from remote_pi_pkg.widgets.attitude_indicator import AttitudeIndicator
 from remote_pi_pkg.widgets.control_status_field import ControlStatusField
 from PyQt5.QtWidgets import QTabWidget
 
+import os
+
 
 
 
@@ -31,61 +33,109 @@ class AUVControlGUI(QWidget):
     def init_ui(self):
         self.setWindowTitle("NOSTROMO-AUV CONTROL")
         self.setGeometry(0, 0, 600, 1024)
-       # self.showFullScreen()
+        self.showFullScreen()
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        bg_path = "/home/b/RemotePiRos2/assets/background.png"
 
-        self.setStyleSheet(""" 
-            QWidget {
-                background-color: #141414;
+        print(f"Resolved background path: {bg_path}")
+
+
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-image: url("{bg_path}");
+                background-repeat: no-repeat;
+                background-position: center;
+                background-attachment: fixed;
+                background-color: transparent;
                 color: #00FF00;
                 font-family: "COURIER NEW", monospace;
                 font-size: 16px;
-            }
-            QPushButton {
-                background-color: #222222;
+            }}
+            QPushButton {{
+                background-color: rgba(34, 34, 34, 220);
                 border: 2px solid #00FFFF;
                 padding: 10px;
-            }
-            QPushButton#deactivateButton {
+            }}
+            QPushButton#deactivateButton,
+            QPushButton#quitButton {{
                 border: 2px solid #FF4500;
                 color: #FF4500;
-            }
-            QPushButton#quitButton {
-                border: 2px solid #FF4500;
-                color: #FF4500;
-            }
-            QPushButton:hover {
-                background-color: #333333;
-            }
-            QTextEdit {
-                background-color: #222222;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(51, 51, 51, 220);
+            }}
+            QTextEdit {{
+                background-color: rgba(34, 34, 34, 200);
                 border: 2px solid #00FFFF;
                 padding: 5px;
-            }
-            QTabBar::tab {
-            height: 30px;
-            width: 260px;
-            padding: 10px;
-            font-size: 18px;
-            background-color: #222222;
-            border: 2px solid #00FFFF;
-            margin-right: 4px;
-        }
-
-        QTabBar::tab:selected {
-            background-color: #333333;
-            border-bottom: 4px solid #FF4500;
-}
-
+            }}
+            QTabWidget::pane {{
+                background: transparent;
+            }}
+            QTabBar::tab {{
+                height: 30px;
+                width: 260px;
+                padding: 10px;
+                font-size: 18px;
+                background-color: rgba(34, 34, 34, 180);  /* Transparent background */
+                border: 2px solid #00FFFF;
+                margin-right: 4px;
+            }}
+            QTabBar::tab:selected {{
+                background-color: rgba(51, 51, 51, 200);
+                border-bottom: 4px solid #FF4500;
+            }}
         """)
+
 
         # Root layout for tabs
         outer_layout = QVBoxLayout()
         tabs = QTabWidget()
+        #tabs.setStyleSheet("background: transparent;")
+        
+
 
         # =============== OPERATION TAB ===============
         operation_tab = QWidget()
         operation_layout = QVBoxLayout()
         main_layout = QHBoxLayout()
+        operation_tab.setAttribute(Qt.WA_StyledBackground, True)
+        operation_tab.setStyleSheet("background: transparent;")
+        
+                # =============== SETTINGS TAB ===============
+        settings_tab = QWidget()
+        settings_layout = QVBoxLayout()
+        
+        settings_tab.setAttribute(Qt.WA_StyledBackground, True)
+        settings_tab.setStyleSheet("background: transparent;")
+
+                # =============== ADD TABS ===============
+        tabs.addTab(operation_tab, "OPERATION")
+        tabs.addTab(settings_tab, "SETTINGS")
+
+        outer_layout.addWidget(tabs)
+        self.setLayout(outer_layout)
+        QTimer.singleShot(0, self.showFullScreen)
+
+
+        self.btn_configure = QPushButton("CONFIGURE DRIVER")
+        self.btn_activate = QPushButton("ACTIVATE DRIVER")
+        self.btn_deactivate = QPushButton("DEACTIVATE DRIVER")
+        self.btn_cleanup = QPushButton("CLEANUP DRIVER")
+        self.btn_quit = QPushButton("QUIT")
+        self.btn_quit.setObjectName("quitButton")
+
+        self.btn_quit.clicked.connect(self.quit_app)
+        self.btn_configure.clicked.connect(lambda: self.ros_node.call_lifecycle_service(1))
+        self.btn_activate.clicked.connect(lambda: self.ros_node.call_lifecycle_service(3))
+        self.btn_deactivate.clicked.connect(lambda: self.ros_node.call_lifecycle_service(4))
+        self.btn_cleanup.clicked.connect(lambda: self.ros_node.call_lifecycle_service(5))
+
+        for btn in [self.btn_configure, self.btn_activate, self.btn_deactivate, self.btn_cleanup, self.btn_quit]:
+            settings_layout.addWidget(btn)
+        settings_layout.addStretch(1)
+        settings_tab.setLayout(settings_layout)
+
 
         # --- LEFT COLUMN ---
         left_layout = QVBoxLayout()
@@ -138,35 +188,9 @@ class AUVControlGUI(QWidget):
         operation_layout.addWidget(self.status_display)
         operation_tab.setLayout(operation_layout)
 
-        # =============== SETTINGS TAB ===============
-        settings_tab = QWidget()
-        settings_layout = QVBoxLayout()
 
-        self.btn_configure = QPushButton("CONFIGURE DRIVER")
-        self.btn_activate = QPushButton("ACTIVATE DRIVER")
-        self.btn_deactivate = QPushButton("DEACTIVATE DRIVER")
-        self.btn_cleanup = QPushButton("CLEANUP DRIVER")
-        self.btn_quit = QPushButton("QUIT")
-        self.btn_quit.setObjectName("quitButton")
 
-        self.btn_quit.clicked.connect(self.quit_app)
-        self.btn_configure.clicked.connect(lambda: self.ros_node.call_lifecycle_service(1))
-        self.btn_activate.clicked.connect(lambda: self.ros_node.call_lifecycle_service(3))
-        self.btn_deactivate.clicked.connect(lambda: self.ros_node.call_lifecycle_service(4))
-        self.btn_cleanup.clicked.connect(lambda: self.ros_node.call_lifecycle_service(5))
 
-        for btn in [self.btn_configure, self.btn_activate, self.btn_deactivate, self.btn_cleanup, self.btn_quit]:
-            settings_layout.addWidget(btn)
-        settings_layout.addStretch(1)
-        settings_tab.setLayout(settings_layout)
-
-        # =============== ADD TABS ===============
-        tabs.addTab(operation_tab, "OPERATION")
-        tabs.addTab(settings_tab, "SETTINGS")
-
-        outer_layout.addWidget(tabs)
-        self.setLayout(outer_layout)
-        QTimer.singleShot(0, self.showFullScreen)
         
     def toggle_sticky_mode(self):
         self.virtual_joystick.sticky_mode = not self.virtual_joystick.sticky_mode
