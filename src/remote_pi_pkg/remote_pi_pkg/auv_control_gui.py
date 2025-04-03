@@ -11,6 +11,7 @@ from remote_pi_pkg.widgets.virtual_joystick import VirtualJoystickWidget
 from remote_pi_pkg.widgets.heading_bar import HeadingBarWidget
 from remote_pi_pkg.widgets.attitude_indicator import AttitudeIndicator
 from remote_pi_pkg.widgets.control_status_field import ControlStatusField
+from PyQt5.QtWidgets import QTabWidget
 
 
 
@@ -28,12 +29,11 @@ class AUVControlGUI(QWidget):
         self.status_update_timer.start(250)
 
     def init_ui(self):
-        # Set window for portrait mode with extra padding (650x1024)
-        self.setWindowTitle("NOSTROMO-INSPIRED AUV CONTROL")
-        self.setGeometry(0, 0, 650, 1024)
-        self.showFullScreen()
+        self.setWindowTitle("NOSTROMO-AUV CONTROL")
+        self.setGeometry(0, 0, 600, 1024)
+       # self.showFullScreen()
 
-        self.setStyleSheet("""
+        self.setStyleSheet(""" 
             QWidget {
                 background-color: #141414;
                 color: #00FF00;
@@ -49,6 +49,10 @@ class AUVControlGUI(QWidget):
                 border: 2px solid #FF4500;
                 color: #FF4500;
             }
+            QPushButton#quitButton {
+                border: 2px solid #FF4500;
+                color: #FF4500;
+            }
             QPushButton:hover {
                 background-color: #333333;
             }
@@ -57,88 +61,112 @@ class AUVControlGUI(QWidget):
                 border: 2px solid #00FFFF;
                 padding: 5px;
             }
-            QComboBox {
-                background-color: #222222;
-                border: 2px solid #00FFFF;
-                padding: 5px;
-            QPushButton#quitButton {
-                border: 2px solid #FF4500;
-                color: #FF4500;
+            QTabBar::tab {
+            height: 30px;
+            width: 260px;
+            padding: 10px;
+            font-size: 18px;
+            background-color: #222222;
+            border: 2px solid #00FFFF;
+            margin-right: 4px;
+        }
+
+        QTabBar::tab:selected {
+            background-color: #333333;
+            border-bottom: 4px solid #FF4500;
 }
-            }
+
         """)
 
+        # Root layout for tabs
         outer_layout = QVBoxLayout()
+        tabs = QTabWidget()
 
-        # Top row: Main layout with two columns
+        # =============== OPERATION TAB ===============
+        operation_tab = QWidget()
+        operation_layout = QVBoxLayout()
         main_layout = QHBoxLayout()
 
-        # Left column: Control buttons and status field.
+        # --- LEFT COLUMN ---
         left_layout = QVBoxLayout()
         self.btn_activate_pid = QPushButton("ACTIVATE ROLL PID")
         self.btn_deactivate_pid = QPushButton("DEACTIVATE ROLL PID")
         self.btn_deactivate_pid.setObjectName("deactivateButton")
         self.btn_canned = QPushButton("SEND CANNED MOVEMENT")
-        left_layout.addWidget(self.btn_activate_pid)
-        left_layout.addWidget(self.btn_deactivate_pid)
-        left_layout.addWidget(self.btn_canned)
-        
         self.btn_duration_increase = QPushButton("DURATION +")
         self.btn_duration_decrease = QPushButton("DURATION -")
-        left_layout.addWidget(self.btn_duration_increase)
-        left_layout.addWidget(self.btn_duration_decrease)
-        
         self.btn_toggle_sticky = QPushButton("STICKY MODE: OFF")
         self.btn_toggle_sticky.setObjectName("stickyOff")
+
         self.btn_toggle_sticky.clicked.connect(self.toggle_sticky_mode)
-        left_layout.addWidget(self.btn_toggle_sticky)
-        
-        self.control_status_field = ControlStatusField()
-        left_layout.addWidget(QLabel("CONTROL STATUS"))
-        left_layout.addWidget(self.control_status_field)
-        left_layout.addStretch(1)
-        main_layout.addLayout(left_layout, 1)
-        
-        self.btn_quit = QPushButton("QUIT")
-        self.btn_quit.setObjectName("quitButton")
-        self.btn_quit.clicked.connect(self.quit_app)
-        left_layout.addWidget(self.btn_quit)
-
-        # Right column: Virtual Joystick and Heading HUD.
-        right_layout = QVBoxLayout()
-        
-        self.heading_hud = HeadingBarWidget()
-        right_layout.addWidget(QLabel("HEADING HUD"))
-        right_layout.addWidget(self.heading_hud)
-        right_layout.addStretch(1)
-        main_layout.addLayout(right_layout, 1)
-        self.attitude_widget = AttitudeIndicator()
-        right_layout.addWidget(QLabel("ATTITUDE INDICATOR"))
-        right_layout.addWidget(self.attitude_widget)
-        
-        self.virtual_joystick = VirtualJoystickWidget()
-        self.virtual_joystick.callback = self.joystick_callback
-        right_layout.addWidget(QLabel("VIRTUAL JOYSTICK"))
-        right_layout.addWidget(self.virtual_joystick)
-
-        
-
-        outer_layout.addLayout(main_layout)
-
-        # Bottom row: Overall System Status display area.
-        self.status_display = QTextEdit()
-        self.status_display.setReadOnly(True)
-        outer_layout.addWidget(QLabel("SYSTEM STATUS"))
-        outer_layout.addWidget(self.status_display)
-
-        self.setLayout(outer_layout)
-
-        # Connect signals to actions.
         self.btn_activate_pid.clicked.connect(lambda: self.ros_node.set_pid(True))
         self.btn_deactivate_pid.clicked.connect(lambda: self.ros_node.set_pid(False))
         self.btn_canned.clicked.connect(self.ros_node.publish_canned)
         self.btn_duration_increase.clicked.connect(self.increase_duration)
         self.btn_duration_decrease.clicked.connect(self.decrease_duration)
+
+        for btn in [self.btn_activate_pid, self.btn_deactivate_pid, self.btn_canned,
+                    self.btn_duration_increase, self.btn_duration_decrease, self.btn_toggle_sticky]:
+            left_layout.addWidget(btn)
+
+        self.control_status_field = ControlStatusField()
+        left_layout.addWidget(QLabel("CONTROL STATUS"))
+        left_layout.addWidget(self.control_status_field)
+        left_layout.addStretch(1)
+        main_layout.addLayout(left_layout, 1)
+
+        # --- RIGHT COLUMN ---
+        right_layout = QVBoxLayout()
+        self.heading_hud = HeadingBarWidget()
+        self.attitude_widget = AttitudeIndicator()
+        self.virtual_joystick = VirtualJoystickWidget()
+        self.virtual_joystick.callback = self.joystick_callback
+
+        right_layout.addWidget(QLabel("HEADING HUD"))
+        right_layout.addWidget(self.heading_hud)
+        right_layout.addWidget(QLabel("ATTITUDE INDICATOR"))
+        right_layout.addWidget(self.attitude_widget)
+        right_layout.addWidget(QLabel("VIRTUAL JOYSTICK"))
+        right_layout.addWidget(self.virtual_joystick)
+        right_layout.addStretch(1)
+        main_layout.addLayout(right_layout, 1)
+
+        operation_layout.addLayout(main_layout)
+        self.status_display = QTextEdit()
+        self.status_display.setReadOnly(True)
+        operation_layout.addWidget(QLabel("SYSTEM STATUS"))
+        operation_layout.addWidget(self.status_display)
+        operation_tab.setLayout(operation_layout)
+
+        # =============== SETTINGS TAB ===============
+        settings_tab = QWidget()
+        settings_layout = QVBoxLayout()
+
+        self.btn_configure = QPushButton("CONFIGURE DRIVER")
+        self.btn_activate = QPushButton("ACTIVATE DRIVER")
+        self.btn_deactivate = QPushButton("DEACTIVATE DRIVER")
+        self.btn_cleanup = QPushButton("CLEANUP DRIVER")
+        self.btn_quit = QPushButton("QUIT")
+        self.btn_quit.setObjectName("quitButton")
+
+        self.btn_quit.clicked.connect(self.quit_app)
+        self.btn_configure.clicked.connect(lambda: self.ros_node.call_lifecycle_service(1))
+        self.btn_activate.clicked.connect(lambda: self.ros_node.call_lifecycle_service(3))
+        self.btn_deactivate.clicked.connect(lambda: self.ros_node.call_lifecycle_service(4))
+        self.btn_cleanup.clicked.connect(lambda: self.ros_node.call_lifecycle_service(5))
+
+        for btn in [self.btn_configure, self.btn_activate, self.btn_deactivate, self.btn_cleanup, self.btn_quit]:
+            settings_layout.addWidget(btn)
+        settings_layout.addStretch(1)
+        settings_tab.setLayout(settings_layout)
+
+        # =============== ADD TABS ===============
+        tabs.addTab(operation_tab, "OPERATION")
+        tabs.addTab(settings_tab, "SETTINGS")
+
+        outer_layout.addWidget(tabs)
+        self.setLayout(outer_layout)
+        QTimer.singleShot(0, self.showFullScreen)
         
     def toggle_sticky_mode(self):
         self.virtual_joystick.sticky_mode = not self.virtual_joystick.sticky_mode
