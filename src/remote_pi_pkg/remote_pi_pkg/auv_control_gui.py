@@ -260,6 +260,13 @@ class AUVControlGUI(QWidget):
             f"LAST COMMAND SENT: {self.ros_node.last_command}"
         )
         self.control_status_field.setHtml(control_status)
+        self.attitude_widget.update_attitude(self.ros_node.euler)
+        if self.ros_node.euler:
+            self.attitude_widget.update_attitude(self.ros_node.euler)
+            self.attitude_widget.update()  # <- force repaint
+
+        self.attitude_widget.update()
+
 
         # Build Overall System Status.
         heading_text = "N/A"
@@ -303,3 +310,5 @@ class AUVControlGUI(QWidget):
         self.status_display.setHtml(overall_status)
         if self.ros_node.heading is not None:
             self.heading_hud.update_heading(self.ros_node.heading)
+        
+

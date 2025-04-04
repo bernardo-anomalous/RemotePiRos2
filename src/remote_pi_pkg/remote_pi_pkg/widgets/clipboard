@@ -1,0 +1,91 @@
+from PyQt5.QtWidgets import QWidget
+
+from PyQt5.QtGui import QPainter, QPen, QBrush, QColor, QTransform, QPolygon
+
+from PyQt5.QtCore import Qt, QPointF
+import math
+
+class AttitudeIndicator(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.raise_()
+        
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setStyleSheet("background: transparent;")
+
+        self.roll = 0.0
+        self.pitch = 0.0
+        self.setMinimumHeight(200)
+        self.setMinimumWidth(200)
+
+    def update_attitude(self, euler):
+        if euler and len(euler) >= 2:
+            try:
+                self.roll = float(euler[0])
+                self.pitch = float(euler[1])
+                self.update()  # 🔴 This is key!
+            except Exception as e:
+                print(f"[AttitudeIndicator] Failed to parse Euler: {e}")
+
+
+    def paintEvent(self, event):
+        print(f"[AttitudeIndicator] paintEvent - pitch={self.pitch}, roll={self.roll}")
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillRect(self.rect(), Qt.transparent)
+
+        center = self.rect().center()
+        width = self.rect().width()
+        height = self.rect().height()
+
+        # Parameters
+        base_width = 60
+        pitch_effect_scale = 1.0
+        max_angle = 90.0  # max pitch and roll
+
+        # Normalize pitch to -1..1
+        norm_pitch = max(min(self.pitch / max_angle, 1.0), -1.0)
+        norm_roll = max(min(self.roll / max_angle, 1.0), -1.0)
+        max_intensity = max(abs(norm_pitch), abs(norm_roll))  # for inner triangle size
+
+        # Pose triangle points
+        nose_y = norm_pitch * -base_width * pitch_effect_scale
+        point1 = QPointF(0, nose_y)
+        point2 = QPointF(-base_width, 0)
+        point3 = QPointF(base_width, 0)
+        triangle = [point1, point2, point3]
+
+        # Transform to center and rotate
+        transform = QTransform()
+        transform.translate(center.x(), center.y())
+        transform.rotate(self.roll)
+        transformed = [transform.map(p) for p in triangle]
+
+        # Draw outer pose triangle (orange)
+        painter.setBrush(QBrush(QColor("#FF4500")))
+        painter.setPen(QPen(QColor("#FF4500"), 2))
+        painter.drawPolygon(*transformed)
+
+        # Inner intensity triangle (scaled version)
+        inner_scale = 0.1 + 0.9 * max_intensity  # scale from 10% to 100%
+        inner_triangle = [p * inner_scale for p in triangle]
+        inner_transformed = [transform.map(p) for p in inner_triangle]
+
+        painter.setBrush(QBrush(QColor("#FF0000")))  # red fill
+        painter.setPen(Qt.NoPen)
+        painter.drawPolygon(*inner_transformed)
+
+        # Horizon lines on sides
+        painter.setPen(QPen(QColor("#00FF00"), 2))
+        painter.drawLine(10, center.y(), 30, center.y())
+        painter.drawLine(width - 30, center.y(), width - 10, center.y())
+
+
+
+
+
+
+
+
+
+
