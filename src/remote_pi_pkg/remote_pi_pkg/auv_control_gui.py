@@ -28,7 +28,7 @@ class AUVControlGUI(QWidget):
         self.init_ui()
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
-        self.status_update_timer.start(250)
+        self.status_update_timer.start(50)
 
     def init_ui(self):
         self.setWindowTitle("NOSTROMO-AUV CONTROL")

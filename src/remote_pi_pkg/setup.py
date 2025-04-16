@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             "interface = remote_pi_pkg.interface:main",
-            "main = remote_pi_pkg.main:main",
+            "auv_control = remote_pi_pkg.main:main",
         ],
     },
 )

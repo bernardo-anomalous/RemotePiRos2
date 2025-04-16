@@ -11,51 +11,87 @@ class HeadingBarWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.heading = 0.0  # degrees (0 = NORTH)
-        self.setMinimumHeight(80)
+        self.setMinimumHeight(110)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setStyleSheet("background: transparent;")
 
     def update_heading(self, heading):
         self.heading = heading % 360
         self.update()
+        
+    def heading_to_cardinal(self, degrees):
+        directions = [
+            "N", "NNE", "NE", "ENE",
+            "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW",
+            "W", "WNW", "NW", "NNW"
+        ]
+        ix = int((degrees + 11.25) % 360 / 22.5)
+        return directions[ix]
+
 
     def paintEvent(self, event):
         painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
         rect = self.rect()
         width = rect.width()
         height = rect.height()
         center_x = width // 2
         center_y = height // 2
 
-
-        pen = QPen(QColor("#00FF00"), 2)
-        painter.setPen(pen)
+        painter.setPen(QPen(QColor("#00FF00"), 2))
         painter.drawLine(0, center_y, width, center_y)
 
-        tick_interval = 15
-        pixels_per_degree = width / 90.0  # ±45° around center
+        # === CONFIGURATION ===
+        visual_range_deg = 90            # Total degrees shown across full widget width
+        pixels_per_degree = width / visual_range_deg
+        tick_interval = 15               # degrees between ticks
+        total_ticks = int(visual_range_deg / tick_interval) + 2  # +2 for margin
 
-        for deg in range(-45, 46, tick_interval):
-            tick_x = center_x + int(deg * pixels_per_degree)
+        # === Compute base heading snapped to nearest tick ===
+        center_heading = self.heading % 360
+        base_heading = int(center_heading // tick_interval) * tick_interval
+        heading_offset_deg = center_heading - base_heading
+        offset_px = heading_offset_deg * pixels_per_degree
+
+        # === Draw moving ticks ===
+        for i in range(-total_ticks, total_ticks + 1):
+            tick_heading = (base_heading + i * tick_interval) % 360
+            tick_x = int(center_x + i * tick_interval * pixels_per_degree - offset_px)
+
+            if tick_x < -40 or tick_x > width + 40:
+                continue
+
+            # Draw tick
             painter.drawLine(tick_x, center_y - 10, tick_x, center_y + 10)
-            label_deg = (self.heading + deg) % 360
-            cardinal = ""
-            if abs(label_deg - 0) < 7.5 or abs(label_deg - 360) < 7.5:
-                cardinal = "N"
-            elif abs(label_deg - 90) < 7.5:
-                cardinal = "E"
-            elif abs(label_deg - 180) < 7.5:
-                cardinal = "S"
-            elif abs(label_deg - 270) < 7.5:
-                cardinal = "W"
-            label = cardinal if cardinal else f"{int(label_deg)}°"
-            painter.drawText(tick_x - 15, center_y + 30, label)
 
-        marker_pen = QPen(QColor("#FF4500"), 3)
-        painter.setPen(marker_pen)
+            # Label
+            label = ""
+            if abs(tick_heading - 0) < 7.5 or abs(tick_heading - 360) < 7.5:
+                label = "N"
+            elif abs(tick_heading - 90) < 7.5:
+                label = "E"
+            elif abs(tick_heading - 180) < 7.5:
+                label = "S"
+            elif abs(tick_heading - 270) < 7.5:
+                label = "W"
+            else:
+                label = f"{int(tick_heading)}°"
+
+            painter.setFont(QFont("Courier New", 10))
+            painter.drawText(tick_x - 15, center_y + 20, label)
+
+        # === Red center marker ===
+        painter.setPen(QPen(QColor("#FF4500"), 3))
         painter.drawLine(center_x, center_y - 20, center_x, center_y + 20)
+
+        # === Center heading readout ===
+        heading_text = f"{self.heading:.1f}°"
+        cardinal_text = self.heading_to_cardinal(self.heading)
 
         painter.setPen(QPen(QColor("#FF4500")))
         painter.setFont(QFont("Courier New", 14, QFont.Bold))
-        heading_text = f"{self.heading:.1f}°"
-        painter.drawText(center_x - 30, center_y - 25, heading_text)
+        painter.drawText(center_x - 60, center_y - 40, heading_text)
+
+        painter.setFont(QFont("Courier New", 12))
+        painter.drawText(center_x - 40, center_y - 20, cardinal_text)
