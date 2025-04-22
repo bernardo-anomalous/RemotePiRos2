@@ -13,7 +13,7 @@ cat << EOF > "$LAUNCH_SCRIPT"
 export QT_QPA_PLATFORM=xcb
 source /opt/ros/jazzy/setup.bash
 source $WORKSPACE_DIR/install/setup.bash
-ros2 run remote_pi_pkg main
+ros2 run remote_pi_pkg auv_control
 EOF
 
 chmod +x "$LAUNCH_SCRIPT"

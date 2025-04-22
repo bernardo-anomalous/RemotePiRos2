@@ -5,9 +5,6 @@ from sensor_msgs.msg import Imu
 from auv_custom_interfaces.msg import ServoMovementCommand
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.msg import Transition
-from geometry_msgs.msg import Vector3  
-from std_msgs.msg import String        
-
 
 
 class ROSInterface(Node):
@@ -42,8 +39,8 @@ class ROSInterface(Node):
         # Subscribers
         self.create_subscription(Float32MultiArray, 'current_servo_angles', self.servo_angles_callback, 10)
         self.create_subscription(Imu, 'imu/data', self.imu_callback, 10)
-        self.create_subscription(String, 'imu/heading', self.heading_callback, 10)
-        self.create_subscription(Vector3, 'imu/euler', self.euler_callback, 10)
+        self.create_subscription(Float32, 'imu/heading', self.heading_callback, 10)
+        self.create_subscription(Float32MultiArray, 'imu/euler', self.euler_callback, 10)
 
     def publish_roll(self):
         msg = Float32()
@@ -113,20 +110,14 @@ class ROSInterface(Node):
         self.imu_reading = msg
         self.get_logger().info("RECEIVED IMU DATA.")
 
-    def heading_callback(self, msg: String):
-        try:
-            heading_str = msg.data
-            # Parse heading like 'Heading: East, 123.45 degrees'
-            heading_value = float(heading_str.split(',')[1].strip().split()[0])
-            self.heading = heading_value
-            self.get_logger().info(f"HEADING RECEIVED: {self.heading} degrees")
-        except Exception as e:
-            self.get_logger().error(f"Failed to parse heading string: {e}")
+    def heading_callback(self, msg: Float32):
+        self.heading = msg.data
+        self.get_logger().info(f"HEADING: {self.heading}")
 
-    def euler_callback(self, msg: Vector3):
+    def euler_callback(self, msg: Float32MultiArray):
         try:
-            # Directly access Vector3 fields
-            self.euler = [-float(msg.x), -float(msg.y), float(msg.z)]
-            self.get_logger().info(f"EULER ANGLES RECEIVED: {self.euler}")
-        except Exception as e:
-            self.get_logger().error(f"Failed to parse euler data: {e}")
+            # Ensure Euler values are floats
+            self.euler = [float(x) for x in msg.data]
+        except Exception:
+            self.euler = None
+        self.get_logger().info(f"EULER ANGLES: {self.euler}")
