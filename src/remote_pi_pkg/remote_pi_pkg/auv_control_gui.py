@@ -85,6 +85,14 @@ class AUVControlGUI(QWidget):
         self.status_update_timer.start(50)
 
     def init_ui(self):
+        
+        
+
+        # Add a timer to check lifecycle state every second
+        self.lifecycle_update_timer = QTimer()
+        self.lifecycle_update_timer.timeout.connect(self.update_lifecycle_buttons)
+        self.lifecycle_update_timer.start(1000)  # Check every 1 second
+
         # === Tabs ===
         outer_layout = QVBoxLayout()
         tabs = QTabWidget()
@@ -131,8 +139,8 @@ class AUVControlGUI(QWidget):
         ]
 
         for btn, trans_id in button_transition_pairs:
-            btn.clicked.connect(lambda _, tid=trans_id: self.handle_lifecycle_button(tid))
-            settings_layout.addWidget(btn)
+         btn.clicked.connect(self.make_lifecycle_callback(trans_id))
+         settings_layout.addWidget(btn)
 
         settings_layout.addWidget(self.label_current_state)
         settings_layout.addStretch(1)
@@ -211,8 +219,11 @@ class AUVControlGUI(QWidget):
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
         self.status_update_timer.start(50)
+        self.update_lifecycle_buttons()  # Check the state immediately on startup
 
 
+    def make_lifecycle_callback(self, transition_id):
+        return lambda _: self.handle_lifecycle_button(transition_id)
 
         
     def toggle_sticky_mode(self):
@@ -328,7 +339,8 @@ class AUVControlGUI(QWidget):
             f"{imu_text}<br>"
             f"{euler_text}<br>"
             "PID STATE: (SEE ROS LOGS)<br>"
-            "LIFECYCLE: ACTIVE"
+            f"LIFECYCLE: {self.ros_node.get_lifecycle_state() or 'UNAVAILABLE'}"
+
         )
         self.status_display.setHtml(overall_status)
         if self.ros_node.heading is not None:
@@ -361,7 +373,7 @@ class AUVControlGUI(QWidget):
             {'id': Transition.TRANSITION_UNCONFIGURED_SHUTDOWN, 'start': 'unconfigured', 'label': 'SHUTDOWN (UNCONFIGURED)'},
             {'id': Transition.TRANSITION_INACTIVE_SHUTDOWN, 'start': 'inactive', 'label': 'SHUTDOWN (INACTIVE)'},
             {'id': Transition.TRANSITION_ACTIVE_SHUTDOWN, 'start': 'active', 'label': 'SHUTDOWN (ACTIVE)'},
-            {'id': Transition.TRANSITION_ERROR, 'start': 'errorprocessing', 'label': 'ERROR RECOVERY'}
+            {'id': Transition.TRANSITION_DESTROY, 'start': 'errorprocessing', 'label': 'ERROR RECOVERY'}
         ]
 
 
