@@ -11,9 +11,6 @@ from remote_pi_pkg.widgets.heading_bar import HeadingBarWidget
 from remote_pi_pkg.widgets.attitude_indicator import AttitudeIndicator
 from remote_pi_pkg.widgets.control_status_field import ControlStatusField
 from lifecycle_msgs.msg import Transition
-from PyQt5.QtWidgets import QScrollArea, QSizePolicy
-from PyQt5.QtGui import QTextOption
-
 
 
 import os
@@ -115,9 +112,14 @@ class AUVControlGUI(QWidget):
         self.btn_error_recovery = QPushButton("ERROR RECOVERY")
         self.btn_quit = QPushButton("QUIT")
         self.btn_quit.setObjectName("quitButton")
+        
 
         self.label_current_state = QLabel("CURRENT STATE: UNKNOWN")
         self.label_current_state.setStyleSheet("font-size: 18px; color: #00FFFF;")
+
+        # Connect buttons (this assumes you already have call_lifecycle_service method)
+        # === Connect Lifecycle Buttons Properly ===
+
 
         self.btn_quit.clicked.connect(self.quit_app)
 
@@ -126,12 +128,13 @@ class AUVControlGUI(QWidget):
             (self.btn_activate, Transition.TRANSITION_ACTIVATE),
             (self.btn_deactivate, Transition.TRANSITION_DEACTIVATE),
             (self.btn_cleanup, Transition.TRANSITION_CLEANUP),
-            (self.btn_shutdown, Transition.TRANSITION_UNCONFIGURED_SHUTDOWN),
+            (self.btn_shutdown, Transition.TRANSITION_UNCONFIGURED_SHUTDOWN),  # Optional: Replace with dynamic logic if needed
             (self.btn_error_recovery, Transition.TRANSITION_DESTROY)
         ]
 
         for btn, trans_id in button_transition_pairs:
             btn.clicked.connect(lambda _, tid=trans_id: self.handle_lifecycle_button(tid))
+
             settings_layout.addWidget(btn)
 
         settings_layout.addWidget(self.label_current_state)
@@ -141,13 +144,9 @@ class AUVControlGUI(QWidget):
 
         # === OPERATION TAB ===
         left_layout = QVBoxLayout()
-
-        # NEW: Toggle button replacing old activate/deactivate buttons
-        self.btn_pid_toggle = QPushButton("ROLL PID: INACTIVE")
-        self.btn_pid_toggle.setCheckable(True)
-        self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
-        self.btn_pid_toggle.clicked.connect(self.toggle_pid)
-
+        self.btn_activate_pid = QPushButton("ACTIVATE ROLL PID")
+        self.btn_deactivate_pid = QPushButton("DEACTIVATE ROLL PID")
+        self.btn_deactivate_pid.setObjectName("deactivateButton")
         self.btn_canned = QPushButton("SEND CANNED MOVEMENT")
         self.btn_duration_increase = QPushButton("DURATION +")
         self.btn_duration_decrease = QPushButton("DURATION -")
@@ -155,33 +154,21 @@ class AUVControlGUI(QWidget):
         self.btn_toggle_sticky.setObjectName("stickyOff")
 
         self.btn_toggle_sticky.clicked.connect(self.toggle_sticky_mode)
-        self.btn_pid_toggle.clicked.connect(self.toggle_pid)
+        self.btn_activate_pid.clicked.connect(lambda: self.ros_node.set_pid(True))
+        self.btn_deactivate_pid.clicked.connect(lambda: self.ros_node.set_pid(False))
         self.btn_canned.clicked.connect(self.ros_node.publish_canned)
         self.btn_duration_increase.clicked.connect(self.increase_duration)
         self.btn_duration_decrease.clicked.connect(self.decrease_duration)
 
-        # Add widgets to left layout
-        left_layout.addWidget(self.btn_pid_toggle)
-        left_layout.addWidget(self.btn_canned)
-        left_layout.addWidget(self.btn_duration_increase)
-        left_layout.addWidget(self.btn_duration_decrease)
-        left_layout.addWidget(self.btn_toggle_sticky)
+        for btn in [self.btn_activate_pid, self.btn_deactivate_pid, self.btn_canned,
+                    self.btn_duration_increase, self.btn_duration_decrease, self.btn_toggle_sticky]:
+            left_layout.addWidget(btn)
 
-        # Control status area with scrolling
+        # ✅ Here’s where the ControlStatusField was missing before!
         self.control_status_field = ControlStatusField()
-        self.control_status_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
-        self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
-        self.control_status_field.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.control_status_field.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setWidget(self.control_status_field)
         left_layout.addWidget(QLabel("CONTROL STATUS"))
-        left_layout.addWidget(scroll_area)
+        left_layout.addWidget(self.control_status_field)
         left_layout.addStretch(1)
-
         main_layout.addLayout(left_layout, 1)
 
         # === RIGHT COLUMN ===
@@ -206,11 +193,6 @@ class AUVControlGUI(QWidget):
         operation_layout.addWidget(QLabel("SYSTEM STATUS"))
         operation_layout.addWidget(self.status_display)
         operation_tab.setLayout(operation_layout)
-
-        # === STATUS UPDATE TIMER ===
-        self.status_update_timer = QTimer()
-        self.status_update_timer.timeout.connect(self.update_status)
-        self.status_update_timer.start(50)
 
 
 
@@ -409,15 +391,7 @@ class AUVControlGUI(QWidget):
 
             
         
-    def toggle_pid(self):
-        activate = self.btn_pid_toggle.isChecked()
-        self.ros_node.set_pid(activate)
-        if activate:
-            self.btn_pid_toggle.setText("ROLL PID: ACTIVE")
-            self.btn_pid_toggle.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
-        else:
-            self.btn_pid_toggle.setText("ROLL PID: INACTIVE")
-            self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
 
         
 
