@@ -275,6 +275,13 @@ class AUVControlGUI(QWidget):
         self.ros_node.publish_roll()
 
     def update_status(self):
+        now = time.time()
+        if not hasattr(self, 'last_gui_update'):
+            self.last_gui_update = now
+        if now - self.last_gui_update < 0.5:  # Only update every 500ms
+            return  # Skip the update if too soon
+        self.last_gui_update = now
+
         def colorize(value):
             if isinstance(value, float) and value < 0:
                 return f'<font color="#FF4500">{value:.1f}</font>'
