@@ -34,6 +34,8 @@ class ROSInterface(Node):
         self.target_pitch_pub = self.create_publisher(Float32, 'target_pitch', 10)
         self.canned_pub = self.create_publisher(ServoMovementCommand, 'servo_interpolation_commands', 10)
         self.pid_pub = self.create_publisher(Bool, 'wing_pid_active', 10)
+        self.create_subscription(Bool, 'wing_pid_active', self.wing_pid_status_callback, 10)
+
         
         # Lifecycle service client
         self.lifecycle_client = self.create_client(ChangeState, 'servo_driver_node/change_state')
@@ -58,17 +60,17 @@ class ROSInterface(Node):
         msg = Float32()
         msg.data = float(self.target_roll)
         self.target_roll_pub.publish(msg)
-        self.get_logger().info(f"PUBLISHED ROLL: {self.target_roll}")
+        #self.get_logger().info(f"PUBLISHED ROLL: {self.target_roll}")
 
     def publish_pitch(self):
         msg = Float32()
         msg.data = float(self.target_pitch)
         self.target_pitch_pub.publish(msg)
-        self.get_logger().info(f"PUBLISHED PITCH: {self.target_pitch}")
+        #self.get_logger().info(f"PUBLISHED PITCH: {self.target_pitch}")
 
     def publish_canned(self):
         # Step 1: Deactivate Roll PID immediately before sending the canned message
-        self.get_logger().info("[ROSInterface] Deactivating Roll PID before sending canned movement.")
+        #self.get_logger().info("[ROSInterface] Deactivating Roll PID before sending canned movement.")
         self.set_pid(False)
         self.roll_pid_enabled = False
         self.pid_reattach_pending = True  # Tell the system to re-enable later
@@ -114,7 +116,7 @@ class ROSInterface(Node):
         # Step 3: Publish the canned command
         self.canned_pub.publish(msg)
         self.last_command = f"CANNED MOVEMENT PUBLISHED @ {self.get_clock().now().to_msg()}"
-        self.get_logger().info("[ROSInterface] Canned movement command sent.")
+        #self.get_logger().info("[ROSInterface] Canned movement command sent.")
 
 
     def set_pid(self, activate: bool):
@@ -122,15 +124,15 @@ class ROSInterface(Node):
         msg.data = activate
         self.pid_pub.publish(msg)
         state = "ACTIVATED" if activate else "DEACTIVATED"
-        self.get_logger().info(f"{state} ROLL PID.")
+        #self.get_logger().info(f"{state} ROLL PID.")
 
     def servo_angles_callback(self, msg: Float32MultiArray):
         self.current_servo_angles = list(msg.data)
-        self.get_logger().info(f"SERVO ANGLES: {self.current_servo_angles}")
+        #self.get_logger().info(f"SERVO ANGLES: {self.current_servo_angles}")
 
     def imu_callback(self, msg: Imu):
         self.imu_reading = msg
-        self.get_logger().info("RECEIVED IMU DATA.")
+        #self.get_logger().info("RECEIVED IMU DATA.")
 
     def heading_callback(self, msg: String):
         try:
@@ -146,12 +148,12 @@ class ROSInterface(Node):
         try:
             # Directly access Vector3 fields
             self.euler = [-float(msg.x), -float(msg.y), float(msg.z)]
-            self.get_logger().info(f"EULER ANGLES RECEIVED: {self.euler}")
+            #self.get_logger().info(f"EULER ANGLES RECEIVED: {self.euler}")
         except Exception as e:
             self.get_logger().error(f"Failed to parse euler data: {e}")
             
     def call_lifecycle_service(self, transition_id):
-        self.get_logger().info(f"[PATCH GUI] Calling lifecycle transition ID: {transition_id}")
+        #self.get_logger().info(f"[PATCH GUI] Calling lifecycle transition ID: {transition_id}")
 
         if not self.lifecycle_client.service_is_ready():
             self.get_logger().warn("LIFECYCLE SERVICE CLIENT NOT READY")
@@ -227,5 +229,8 @@ class ROSInterface(Node):
                 self.pid_reattach_pending = False
 
 
+    def wing_pid_status_callback(self, msg):
+        self.roll_pid_enabled = msg.data
+        # Optionally, emit a signal to the GUI if needed
 
 

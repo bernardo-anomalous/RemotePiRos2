@@ -243,12 +243,12 @@ class AUVControlGUI(QWidget):
 
     def increase_duration(self):
         self.ros_node.canned_duration_factor += self.ros_node.DURATION_STEP
-        self.ros_node.get_logger().info(f"DURATION FACTOR INCREASED: {self.ros_node.canned_duration_factor:.2f}")
+        #self.ros_node.get_logger().info(f"DURATION FACTOR INCREASED: {self.ros_node.canned_duration_factor:.2f}")
 
     def decrease_duration(self):
         new_factor = self.ros_node.canned_duration_factor - self.ros_node.DURATION_STEP
         self.ros_node.canned_duration_factor = max(0.1, new_factor)
-        self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
+        #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
     def joystick_callback(self, norm_x, norm_y):
         # Set target values directly instead of incrementing
@@ -261,18 +261,18 @@ class AUVControlGUI(QWidget):
         self.ros_node.publish_roll()
 
     def update_status(self):
-        
         def colorize(value):
             if isinstance(value, float) and value < 0:
                 return f'<font color="#FF4500">{value:.1f}</font>'
             return f'{value:.1f}' if isinstance(value, float) else str(value)
 
-        # Build Control Status Field.
+        # === Prepare Control Status Field ===
         try:
             pitch_cmd = self.ros_node.target_pitch
             roll_cmd = self.ros_node.target_roll
         except Exception:
             pitch_cmd = roll_cmd = 0.0
+
         current_pitch = "N/A"
         current_roll = "N/A"
         if self.ros_node.euler and len(self.ros_node.euler) >= 2:
@@ -281,28 +281,22 @@ class AUVControlGUI(QWidget):
                 current_pitch = float(self.ros_node.euler[1])
             except Exception:
                 current_roll, current_pitch = "N/A", "N/A"
+
         servo_text = "N/A"
         if self.ros_node.current_servo_angles:
             servo_text = "<br>".join(f"SERVO {i+1}: {angle:.1f}" for i, angle in enumerate(self.ros_node.current_servo_angles))
+
         control_status = (
             f"PITCH COMMAND: {colorize(pitch_cmd)}<br>"
             f"ROLL COMMAND: {colorize(roll_cmd)}<br>"
-            f"CURRENT PITCH: {colorize('<font color=\"#FF4500\">'+f'{current_pitch:.1f}'+'</font>' if isinstance(current_pitch, float) and current_pitch < 0 else (f'{current_pitch:.1f}' if isinstance(current_pitch, float) else current_pitch))}<br>"
-            f"CURRENT ROLL: {colorize('<font color=\"#FF4500\">'+f'{current_roll:.1f}'+'</font>' if isinstance(current_roll, float) and current_roll < 0 else (f'{current_roll:.1f}' if isinstance(current_roll, float) else current_roll))}<br>"
+            f"CURRENT PITCH: {colorize(current_pitch)}<br>"
+            f"CURRENT ROLL: {colorize(current_roll)}<br>"
             f"SERVO ANGLES:<br>{servo_text}<br>"
             f"CANNED DURATION FACTOR: {'<font color=\"#FF4500\">'+f'{self.ros_node.canned_duration_factor:.2f}'+'</font>' if self.ros_node.canned_duration_factor < 1.0 else f'{self.ros_node.canned_duration_factor:.2f}'}<br>"
             f"LAST COMMAND SENT: {self.ros_node.last_command}"
         )
-        self.control_status_field.setHtml(control_status)
-        self.attitude_widget.update_attitude(self.ros_node.euler)
-        if self.ros_node.euler:
-            self.attitude_widget.update_attitude(self.ros_node.euler)
-            self.attitude_widget.update()  # <- force repaint
 
-        self.attitude_widget.update()
-
-
-        # Build Overall System Status.
+        # === Prepare Heading, IMU, Euler, and Overall Status ===
         heading_text = "N/A"
         if self.ros_node.heading is not None:
             heading = self.ros_node.heading % 360
@@ -323,16 +317,19 @@ class AUVControlGUI(QWidget):
             else:
                 card = "NW"
             heading_text = f"{heading:.1f}° ({card})"
+
         imu_text = "N/A"
         if self.ros_node.imu_reading is not None:
             imu = self.ros_node.imu_reading.orientation
             imu_text = f"IMU ORIENTATION: X={imu.x:.2f}, Y={imu.y:.2f}, Z={imu.z:.2f}, W={imu.w:.2f}"
+
         euler_text = "N/A"
         if self.ros_node.euler and len(self.ros_node.euler) >= 3:
             try:
                 euler_text = f"CURRENT POSE: ROLL={self.ros_node.euler[0]:.1f}, PITCH={self.ros_node.euler[1]:.1f}, YAW={self.ros_node.euler[2]:.1f}"
             except Exception:
                 euler_text = "N/A"
+
         overall_status = (
             f"MODE: {self.ros_node.mode}<br>"
             f"HEADING: {heading_text}<br>"
@@ -340,12 +337,30 @@ class AUVControlGUI(QWidget):
             f"{euler_text}<br>"
             "PID STATE: (SEE ROS LOGS)<br>"
             f"LIFECYCLE: {self.ros_node.get_lifecycle_state() or 'UNAVAILABLE'}"
-
         )
-        self.status_display.setHtml(overall_status)
+
+        # === Selective Repainting (Only if Changed) ===
+        if getattr(self, 'last_control_status', None) != control_status:
+            self.control_status_field.setHtml(control_status)
+            self.last_control_status = control_status
+
+        if getattr(self, 'last_overall_status', None) != overall_status:
+            self.status_display.setHtml(overall_status)
+            self.last_overall_status = overall_status
+
+        # === Always Update Heading Widget ===
         if self.ros_node.heading is not None:
             self.heading_hud.update_heading(self.ros_node.heading)
-            
+
+        # === Always Update Attitude Widget (Pose) ===
+        if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
+            self.attitude_widget.update_attitude(self.ros_node.euler)
+            self.attitude_widget.update()
+
+        # === Update PID Toggle Button State ===
+        self.update_pid_button_state()
+
+                
         
 
             
@@ -430,6 +445,17 @@ class AUVControlGUI(QWidget):
         else:
             self.btn_pid_toggle.setText("ROLL PID: INACTIVE")
             self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+            
+    def update_pid_button_state(self):
+        if self.ros_node.roll_pid_enabled:
+            self.btn_pid_toggle.setText("ROLL PID: ACTIVE")
+            self.btn_pid_toggle.setChecked(True)
+            self.btn_pid_toggle.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+        else:
+            self.btn_pid_toggle.setText("ROLL PID: INACTIVE")
+            self.btn_pid_toggle.setChecked(False)
+            self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
 
         
 
