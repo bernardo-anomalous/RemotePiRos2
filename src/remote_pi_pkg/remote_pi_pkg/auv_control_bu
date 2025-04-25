@@ -11,6 +11,9 @@ from remote_pi_pkg.widgets.heading_bar import HeadingBarWidget
 from remote_pi_pkg.widgets.attitude_indicator import AttitudeIndicator
 from remote_pi_pkg.widgets.control_status_field import ControlStatusField
 from lifecycle_msgs.msg import Transition
+from PyQt5.QtWidgets import QScrollArea, QSizePolicy
+from PyQt5.QtGui import QTextOption
+
 
 
 import os
@@ -82,6 +85,14 @@ class AUVControlGUI(QWidget):
         self.status_update_timer.start(50)
 
     def init_ui(self):
+        
+        
+
+        # Add a timer to check lifecycle state every second
+        self.lifecycle_update_timer = QTimer()
+        self.lifecycle_update_timer.timeout.connect(self.update_lifecycle_buttons)
+        self.lifecycle_update_timer.start(1000)  # Check every 1 second
+
         # === Tabs ===
         outer_layout = QVBoxLayout()
         tabs = QTabWidget()
@@ -112,14 +123,9 @@ class AUVControlGUI(QWidget):
         self.btn_error_recovery = QPushButton("ERROR RECOVERY")
         self.btn_quit = QPushButton("QUIT")
         self.btn_quit.setObjectName("quitButton")
-        
 
         self.label_current_state = QLabel("CURRENT STATE: UNKNOWN")
         self.label_current_state.setStyleSheet("font-size: 18px; color: #00FFFF;")
-
-        # Connect buttons (this assumes you already have call_lifecycle_service method)
-        # === Connect Lifecycle Buttons Properly ===
-
 
         self.btn_quit.clicked.connect(self.quit_app)
 
@@ -128,14 +134,13 @@ class AUVControlGUI(QWidget):
             (self.btn_activate, Transition.TRANSITION_ACTIVATE),
             (self.btn_deactivate, Transition.TRANSITION_DEACTIVATE),
             (self.btn_cleanup, Transition.TRANSITION_CLEANUP),
-            (self.btn_shutdown, Transition.TRANSITION_UNCONFIGURED_SHUTDOWN),  # Optional: Replace with dynamic logic if needed
+            (self.btn_shutdown, Transition.TRANSITION_UNCONFIGURED_SHUTDOWN),
             (self.btn_error_recovery, Transition.TRANSITION_DESTROY)
         ]
 
         for btn, trans_id in button_transition_pairs:
-            btn.clicked.connect(lambda _, tid=trans_id: self.handle_lifecycle_button(tid))
-
-            settings_layout.addWidget(btn)
+         btn.clicked.connect(self.make_lifecycle_callback(trans_id))
+         settings_layout.addWidget(btn)
 
         settings_layout.addWidget(self.label_current_state)
         settings_layout.addStretch(1)
@@ -144,9 +149,13 @@ class AUVControlGUI(QWidget):
 
         # === OPERATION TAB ===
         left_layout = QVBoxLayout()
-        self.btn_activate_pid = QPushButton("ACTIVATE ROLL PID")
-        self.btn_deactivate_pid = QPushButton("DEACTIVATE ROLL PID")
-        self.btn_deactivate_pid.setObjectName("deactivateButton")
+
+        # NEW: Toggle button replacing old activate/deactivate buttons
+        self.btn_pid_toggle = QPushButton("ROLL PID: INACTIVE")
+        self.btn_pid_toggle.setCheckable(True)
+        self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+        self.btn_pid_toggle.clicked.connect(self.toggle_pid)
+
         self.btn_canned = QPushButton("SEND CANNED MOVEMENT")
         self.btn_duration_increase = QPushButton("DURATION +")
         self.btn_duration_decrease = QPushButton("DURATION -")
@@ -154,21 +163,33 @@ class AUVControlGUI(QWidget):
         self.btn_toggle_sticky.setObjectName("stickyOff")
 
         self.btn_toggle_sticky.clicked.connect(self.toggle_sticky_mode)
-        self.btn_activate_pid.clicked.connect(lambda: self.ros_node.set_pid(True))
-        self.btn_deactivate_pid.clicked.connect(lambda: self.ros_node.set_pid(False))
+        self.btn_pid_toggle.clicked.connect(self.toggle_pid)
         self.btn_canned.clicked.connect(self.ros_node.publish_canned)
         self.btn_duration_increase.clicked.connect(self.increase_duration)
         self.btn_duration_decrease.clicked.connect(self.decrease_duration)
 
-        for btn in [self.btn_activate_pid, self.btn_deactivate_pid, self.btn_canned,
-                    self.btn_duration_increase, self.btn_duration_decrease, self.btn_toggle_sticky]:
-            left_layout.addWidget(btn)
+        # Add widgets to left layout
+        left_layout.addWidget(self.btn_pid_toggle)
+        left_layout.addWidget(self.btn_canned)
+        left_layout.addWidget(self.btn_duration_increase)
+        left_layout.addWidget(self.btn_duration_decrease)
+        left_layout.addWidget(self.btn_toggle_sticky)
 
-        # ✅ Here’s where the ControlStatusField was missing before!
+        # Control status area with scrolling
         self.control_status_field = ControlStatusField()
+        self.control_status_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
+        self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
+        self.control_status_field.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.control_status_field.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(self.control_status_field)
         left_layout.addWidget(QLabel("CONTROL STATUS"))
-        left_layout.addWidget(self.control_status_field)
+        left_layout.addWidget(scroll_area)
         left_layout.addStretch(1)
+
         main_layout.addLayout(left_layout, 1)
 
         # === RIGHT COLUMN ===
@@ -194,7 +215,15 @@ class AUVControlGUI(QWidget):
         operation_layout.addWidget(self.status_display)
         operation_tab.setLayout(operation_layout)
 
+        # === STATUS UPDATE TIMER ===
+        self.status_update_timer = QTimer()
+        self.status_update_timer.timeout.connect(self.update_status)
+        self.status_update_timer.start(50)
+        self.update_lifecycle_buttons()  # Check the state immediately on startup
 
+
+    def make_lifecycle_callback(self, transition_id):
+        return lambda _: self.handle_lifecycle_button(transition_id)
 
         
     def toggle_sticky_mode(self):
@@ -214,12 +243,12 @@ class AUVControlGUI(QWidget):
 
     def increase_duration(self):
         self.ros_node.canned_duration_factor += self.ros_node.DURATION_STEP
-        self.ros_node.get_logger().info(f"DURATION FACTOR INCREASED: {self.ros_node.canned_duration_factor:.2f}")
+        #self.ros_node.get_logger().info(f"DURATION FACTOR INCREASED: {self.ros_node.canned_duration_factor:.2f}")
 
     def decrease_duration(self):
         new_factor = self.ros_node.canned_duration_factor - self.ros_node.DURATION_STEP
         self.ros_node.canned_duration_factor = max(0.1, new_factor)
-        self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
+        #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
     def joystick_callback(self, norm_x, norm_y):
         # Set target values directly instead of incrementing
@@ -232,18 +261,18 @@ class AUVControlGUI(QWidget):
         self.ros_node.publish_roll()
 
     def update_status(self):
-        
         def colorize(value):
             if isinstance(value, float) and value < 0:
                 return f'<font color="#FF4500">{value:.1f}</font>'
             return f'{value:.1f}' if isinstance(value, float) else str(value)
 
-        # Build Control Status Field.
+        # === Prepare Control Status Field ===
         try:
             pitch_cmd = self.ros_node.target_pitch
             roll_cmd = self.ros_node.target_roll
         except Exception:
             pitch_cmd = roll_cmd = 0.0
+
         current_pitch = "N/A"
         current_roll = "N/A"
         if self.ros_node.euler and len(self.ros_node.euler) >= 2:
@@ -252,28 +281,22 @@ class AUVControlGUI(QWidget):
                 current_pitch = float(self.ros_node.euler[1])
             except Exception:
                 current_roll, current_pitch = "N/A", "N/A"
+
         servo_text = "N/A"
         if self.ros_node.current_servo_angles:
             servo_text = "<br>".join(f"SERVO {i+1}: {angle:.1f}" for i, angle in enumerate(self.ros_node.current_servo_angles))
+
         control_status = (
             f"PITCH COMMAND: {colorize(pitch_cmd)}<br>"
             f"ROLL COMMAND: {colorize(roll_cmd)}<br>"
-            f"CURRENT PITCH: {colorize('<font color=\"#FF4500\">'+f'{current_pitch:.1f}'+'</font>' if isinstance(current_pitch, float) and current_pitch < 0 else (f'{current_pitch:.1f}' if isinstance(current_pitch, float) else current_pitch))}<br>"
-            f"CURRENT ROLL: {colorize('<font color=\"#FF4500\">'+f'{current_roll:.1f}'+'</font>' if isinstance(current_roll, float) and current_roll < 0 else (f'{current_roll:.1f}' if isinstance(current_roll, float) else current_roll))}<br>"
+            f"CURRENT PITCH: {colorize(current_pitch)}<br>"
+            f"CURRENT ROLL: {colorize(current_roll)}<br>"
             f"SERVO ANGLES:<br>{servo_text}<br>"
             f"CANNED DURATION FACTOR: {'<font color=\"#FF4500\">'+f'{self.ros_node.canned_duration_factor:.2f}'+'</font>' if self.ros_node.canned_duration_factor < 1.0 else f'{self.ros_node.canned_duration_factor:.2f}'}<br>"
             f"LAST COMMAND SENT: {self.ros_node.last_command}"
         )
-        self.control_status_field.setHtml(control_status)
-        self.attitude_widget.update_attitude(self.ros_node.euler)
-        if self.ros_node.euler:
-            self.attitude_widget.update_attitude(self.ros_node.euler)
-            self.attitude_widget.update()  # <- force repaint
 
-        self.attitude_widget.update()
-
-
-        # Build Overall System Status.
+        # === Prepare Heading, IMU, Euler, and Overall Status ===
         heading_text = "N/A"
         if self.ros_node.heading is not None:
             heading = self.ros_node.heading % 360
@@ -294,28 +317,50 @@ class AUVControlGUI(QWidget):
             else:
                 card = "NW"
             heading_text = f"{heading:.1f}° ({card})"
+
         imu_text = "N/A"
         if self.ros_node.imu_reading is not None:
             imu = self.ros_node.imu_reading.orientation
             imu_text = f"IMU ORIENTATION: X={imu.x:.2f}, Y={imu.y:.2f}, Z={imu.z:.2f}, W={imu.w:.2f}"
+
         euler_text = "N/A"
         if self.ros_node.euler and len(self.ros_node.euler) >= 3:
             try:
                 euler_text = f"CURRENT POSE: ROLL={self.ros_node.euler[0]:.1f}, PITCH={self.ros_node.euler[1]:.1f}, YAW={self.ros_node.euler[2]:.1f}"
             except Exception:
                 euler_text = "N/A"
+
         overall_status = (
             f"MODE: {self.ros_node.mode}<br>"
             f"HEADING: {heading_text}<br>"
             f"{imu_text}<br>"
             f"{euler_text}<br>"
             "PID STATE: (SEE ROS LOGS)<br>"
-            "LIFECYCLE: ACTIVE"
+            f"LIFECYCLE: {self.ros_node.get_lifecycle_state() or 'UNAVAILABLE'}"
         )
-        self.status_display.setHtml(overall_status)
+
+        # === Selective Repainting (Only if Changed) ===
+        if getattr(self, 'last_control_status', None) != control_status:
+            self.control_status_field.setHtml(control_status)
+            self.last_control_status = control_status
+
+        if getattr(self, 'last_overall_status', None) != overall_status:
+            self.status_display.setHtml(overall_status)
+            self.last_overall_status = overall_status
+
+        # === Always Update Heading Widget ===
         if self.ros_node.heading is not None:
             self.heading_hud.update_heading(self.ros_node.heading)
-            
+
+        # === Always Update Attitude Widget (Pose) ===
+        if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
+            self.attitude_widget.update_attitude(self.ros_node.euler)
+            self.attitude_widget.update()
+
+        # === Update PID Toggle Button State ===
+        self.update_pid_button_state()
+
+                
         
 
             
@@ -343,7 +388,7 @@ class AUVControlGUI(QWidget):
             {'id': Transition.TRANSITION_UNCONFIGURED_SHUTDOWN, 'start': 'unconfigured', 'label': 'SHUTDOWN (UNCONFIGURED)'},
             {'id': Transition.TRANSITION_INACTIVE_SHUTDOWN, 'start': 'inactive', 'label': 'SHUTDOWN (INACTIVE)'},
             {'id': Transition.TRANSITION_ACTIVE_SHUTDOWN, 'start': 'active', 'label': 'SHUTDOWN (ACTIVE)'},
-            {'id': Transition.TRANSITION_ERROR, 'start': 'errorprocessing', 'label': 'ERROR RECOVERY'}
+            {'id': Transition.TRANSITION_DESTROY, 'start': 'errorprocessing', 'label': 'ERROR RECOVERY'}
         ]
 
 
@@ -391,6 +436,25 @@ class AUVControlGUI(QWidget):
 
             
         
+    def toggle_pid(self):
+        activate = self.btn_pid_toggle.isChecked()
+        self.ros_node.set_pid(activate)
+        if activate:
+            self.btn_pid_toggle.setText("ROLL PID: ACTIVE")
+            self.btn_pid_toggle.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+        else:
+            self.btn_pid_toggle.setText("ROLL PID: INACTIVE")
+            self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+            
+    def update_pid_button_state(self):
+        if self.ros_node.roll_pid_enabled:
+            self.btn_pid_toggle.setText("ROLL PID: ACTIVE")
+            self.btn_pid_toggle.setChecked(True)
+            self.btn_pid_toggle.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+        else:
+            self.btn_pid_toggle.setText("ROLL PID: INACTIVE")
+            self.btn_pid_toggle.setChecked(False)
+            self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
 
 
         
