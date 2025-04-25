@@ -40,7 +40,7 @@ class ROSInterface(Node):
         # Lifecycle service client
         self.lifecycle_client = self.create_client(ChangeState, 'servo_driver_node/change_state')
         
-        self.roll_pid_enabled = True  # Tracks current state to avoid redundant calls
+        
         self.create_subscription(String, 'servo_driver_status', self.servo_status_callback, 10)
 
         if not self.lifecycle_client.wait_for_service(timeout_sec=5.0):
@@ -53,20 +53,39 @@ class ROSInterface(Node):
         self.create_subscription(Vector3, 'imu/euler', self.euler_callback, 10)
         self.roll_pid_enabled = True                     # Tracks current Roll PID state
         self.pid_reattach_pending = False                # Flags whether we are waiting to re-enable PID
-        self.create_subscription(String, 'servo_driver/status', self.servo_status_callback, 10)
+
+        # IMU Health Status Subscriber
+        self.imu_health_status = "UNKNOWN"  # Default state until data arrives
+        self.create_subscription(String, 'imu/health_status', self.imu_health_callback, 10)
+        self.lifecycle_future = None
+        self.lifecycle_future_transition_id = None
+        self.create_timer(0.1, self.check_lifecycle_future)  # Check every 100ms
+        self.get_state_future = None
+        self.current_lifecycle_state = None
+        self.create_timer(0.1, self.check_get_state_future)  # Check every 100 ms
+        self.lifecycle_state_poll_timer = self.create_timer(1.0, self.poll_lifecycle_state)  # Every 1 second
+
+
+
+        
+    def imu_health_callback(self, msg):
+        self.imu_health_status = msg.data
+        self.get_logger().info(f"[ROSInterface] IMU Health Status: {self.imu_health_status}")
+
 
 
     def publish_roll(self):
         msg = Float32()
         msg.data = float(self.target_roll)
         self.target_roll_pub.publish(msg)
-        #self.get_logger().info(f"PUBLISHED ROLL: {self.target_roll}")
+        # Removed logging for performance
 
     def publish_pitch(self):
         msg = Float32()
         msg.data = float(self.target_pitch)
         self.target_pitch_pub.publish(msg)
-        #self.get_logger().info(f"PUBLISHED PITCH: {self.target_pitch}")
+        # Removed logging for performance
+
 
     def publish_canned(self):
         # Step 1: Deactivate Roll PID immediately before sending the canned message
@@ -152,22 +171,7 @@ class ROSInterface(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to parse euler data: {e}")
             
-    def call_lifecycle_service(self, transition_id):
-        #self.get_logger().info(f"[PATCH GUI] Calling lifecycle transition ID: {transition_id}")
 
-        if not self.lifecycle_client.service_is_ready():
-            self.get_logger().warn("LIFECYCLE SERVICE CLIENT NOT READY")
-            return
-
-        request = ChangeState.Request()
-        request.transition.id = transition_id
-        future = self.lifecycle_client.call_async(request)
-        rclpy.spin_until_future_complete(self, future)
-        if future.result() and future.result().success:
-            self.get_logger().info(f"LIFECYCLE TRANSITION {transition_id} SUCCEEDED.")
-        else:
-            self.get_logger().error(f"LIFECYCLE TRANSITION {transition_id} FAILED OR NO RESPONSE.")
-            
     def get_lifecycle_state(self):
         if not self.lifecycle_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn("SERVO DRIVER NODE NOT AVAILABLE")
@@ -175,24 +179,34 @@ class ROSInterface(Node):
 
         try:
             from lifecycle_msgs.srv import GetState
-            get_state_client = self.create_client(GetState, 'servo_driver_node/get_state')
-            if not get_state_client.wait_for_service(timeout_sec=1.0):
+            self.get_state_client = self.create_client(GetState, 'servo_driver_node/get_state')
+
+            if not self.get_state_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().warn("GET_STATE SERVICE NOT AVAILABLE")
                 return None
 
             request = GetState.Request()
-            future = get_state_client.call_async(request)
-            rclpy.spin_until_future_complete(self, future, timeout_sec=1.0)
+            self.get_state_future = self.get_state_client.call_async(request)
 
-            if future.done() and future.result() is not None:
-                return future.result().current_state.label.lower()
-            else:
-                self.get_logger().warn("FAILED TO GET CURRENT STATE")
-                return None
         except Exception as e:
-            self.get_logger().error(f"Error retrieving lifecycle state: {e}")
-            return None
+            self.get_logger().error(f"Error sending get_lifecycle_state request: {e}")
 
+
+    def check_get_state_future(self):
+        if self.get_state_future is not None and self.get_state_future.done():
+            try:
+                result = self.get_state_future.result()
+                if result and result.current_state:
+                    state_label = result.current_state.label.lower()
+                    if state_label != self.current_lifecycle_state:
+                        self.current_lifecycle_state = state_label
+                        self.get_logger().info(f"[ROSInterface] Lifecycle state updated: {state_label}")
+                else:
+                    self.get_logger().warn("GET_STATE response empty or failed.")
+            except Exception as e:
+                self.get_logger().error(f"Exception in get_state future result: {e}")
+            finally:
+                self.get_state_future = None  # Always clear the future
 
     def call_lifecycle_service(self, transition_id):
         if not self.lifecycle_client.wait_for_service(timeout_sec=1.0):
@@ -202,16 +216,11 @@ class ROSInterface(Node):
         try:
             request = ChangeState.Request()
             request.transition.id = transition_id
-            future = self.lifecycle_client.call_async(request)
-            rclpy.spin_until_future_complete(self, future, timeout_sec=1.0)
-
-            if future.done() and future.result() is not None:
-                self.get_logger().info(f"LIFECYCLE COMMAND SUCCESSFUL: {transition_id}")
-            else:
-                self.get_logger().warn("LIFECYCLE COMMAND FAILED.")
+            self.lifecycle_future = self.lifecycle_client.call_async(request)
+            self.lifecycle_future_transition_id = transition_id
         except Exception as e:
             self.get_logger().error(f"Error during lifecycle service call: {e}")
-            
+    
     def servo_status_callback(self, msg):
         status_word = msg.data.split(":")[0].strip().lower()
 
@@ -232,5 +241,25 @@ class ROSInterface(Node):
     def wing_pid_status_callback(self, msg):
         self.roll_pid_enabled = msg.data
         # Optionally, emit a signal to the GUI if needed
+        
+    def check_lifecycle_future(self):
+        if self.lifecycle_future is not None and self.lifecycle_future.done():
+            try:
+                result = self.lifecycle_future.result()
+                if result and result.success:
+                    self.get_logger().info(f"LIFECYCLE COMMAND SUCCESSFUL: {self.lifecycle_future_transition_id}")
+                else:
+                    self.get_logger().warn("LIFECYCLE COMMAND FAILED OR NO RESPONSE.")
+            except Exception as e:
+                self.get_logger().error(f"Exception in lifecycle future result: {e}")
+            finally:
+                self.lifecycle_future = None
+                self.lifecycle_future_transition_id = None
 
 
+    def poll_lifecycle_state(self):
+        # Only issue a request if there is NO pending future and NO previous call in progress
+        if self.get_state_future is not None:
+            # Skip polling because previous request hasn't completed
+            return
+        self.get_lifecycle_state()

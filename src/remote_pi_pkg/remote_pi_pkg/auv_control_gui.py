@@ -13,6 +13,7 @@ from remote_pi_pkg.widgets.control_status_field import ControlStatusField
 from lifecycle_msgs.msg import Transition
 from PyQt5.QtWidgets import QScrollArea, QSizePolicy
 from PyQt5.QtGui import QTextOption
+import time
 
 
 
@@ -149,6 +150,10 @@ class AUVControlGUI(QWidget):
 
         # === OPERATION TAB ===
         left_layout = QVBoxLayout()
+        self.imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
+        self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        left_layout.addWidget(self.imu_health_label)
+
 
         # NEW: Toggle button replacing old activate/deactivate buttons
         self.btn_pid_toggle = QPushButton("ROLL PID: INACTIVE")
@@ -251,12 +256,21 @@ class AUVControlGUI(QWidget):
         #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
     def joystick_callback(self, norm_x, norm_y):
-        # Set target values directly instead of incrementing
         max_angle = 90.0  # or change to 45.0 for tighter control
 
+        # === Simple Debounce to prevent flooding ===
+        if not hasattr(self, 'last_joystick_publish'):
+            self.last_joystick_publish = time.time()
+        now = time.time()
+        if now - self.last_joystick_publish < 0.05:  # 50ms debounce = 20Hz max
+            return
+        self.last_joystick_publish = now
+
+        # === Update target values ===
         self.ros_node.target_pitch = norm_y * max_angle
         self.ros_node.target_roll = norm_x * max_angle
 
+        # === Publish commands ===
         self.ros_node.publish_pitch()
         self.ros_node.publish_roll()
 
@@ -336,7 +350,8 @@ class AUVControlGUI(QWidget):
             f"{imu_text}<br>"
             f"{euler_text}<br>"
             "PID STATE: (SEE ROS LOGS)<br>"
-            f"LIFECYCLE: {self.ros_node.get_lifecycle_state() or 'UNAVAILABLE'}"
+            f"LIFECYCLE: {self.ros_node.current_lifecycle_state or 'UNAVAILABLE'}"
+
         )
 
         # === Selective Repainting (Only if Changed) ===
@@ -359,13 +374,31 @@ class AUVControlGUI(QWidget):
 
         # === Update PID Toggle Button State ===
         self.update_pid_button_state()
-
-                
         
+        # === Update IMU Health Label ===
+        imu_health = self.ros_node.imu_health_status
+
+        if imu_health == "IMU OK":
+            self.imu_health_label.setText("IMU HEALTH: OK")
+            self.imu_health_label.setStyleSheet("font-size: 18px; color: #00FF00;")
+        elif "UNSTABLE" in imu_health:
+            self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
+            self.imu_health_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Orange
+        elif "RESTARTING" in imu_health:
+            self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
+            self.imu_health_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red
+        else:
+            self.imu_health_label.setText("IMU HEALTH: UNKNOWN")
+            self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+
+
+                        
+                
 
             
     def update_lifecycle_buttons(self):
-        current_state = self.ros_node.get_lifecycle_state()
+        current_state = self.ros_node.current_lifecycle_state
+
 
         # Avoid NoneType errors:
         if not current_state or current_state == "unavailable":
