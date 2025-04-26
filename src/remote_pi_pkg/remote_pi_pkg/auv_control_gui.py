@@ -23,12 +23,14 @@ class AUVControlGUI(QWidget):
     def __init__(self, ros_node):
         super().__init__()
         self.ros_node = ros_node
-        self.setWindowTitle("NOSTROMO-AUV CONTROL")
-        self.setGeometry(0, 0, 600, 1024)
+        self.setWindowTitle("P.A.T.C.H-AUV CONTROL")
+        self.setFixedSize(600, 980)  # Completely locks resizing
+
+
         #self.showFullScreen()
         screen_geometry = QApplication.desktop().screenGeometry()
         self.setGeometry(screen_geometry)                  # Explicitly set the window size to match the screen
-        self.setFixedSize(screen_geometry.width(), screen_geometry.height())  # Lock it down fully
+        #self.setFixedSize(screen_geometry.width(), screen_geometry.height())  # Lock it down fully
 
 
         # === GUI Styling and Background ===
