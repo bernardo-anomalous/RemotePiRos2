@@ -24,6 +24,11 @@ class AttitudeIndicator(QWidget):
         self.outer_color = QColor("#00FFFF")    # Aqua (pose triangle)
         self.intensity_color = QColor("#FF4500")  # Orange-red (intensity fill)
         self.horizon_color = QColor("#00FF00")  # Green (horizon lines)
+        self.target_heading = 0.0  # Add this next to roll and pitch
+        self.heading = 0.0                # Current smoothed heading
+        self.target_heading = 0.0         # Target heading from update
+
+
 
     def update_attitude_target(self, euler):
         """Set the target roll and pitch (called by the GUI)."""
@@ -36,13 +41,99 @@ class AttitudeIndicator(QWidget):
             
     def smooth_update_value(self, current, target, factor=0.2):
         return current + factor * (target - current)
+    
+    def update_heading_target(self, heading):
+        self.target_heading = heading % 360
+        
+    def draw_heading_reference_grid(self, painter):
+        rect = self.rect()
+        width = rect.width()
+        height = rect.height()
+        center_x = width // 2
+
+        spacing = 40                        # Spacing between grid lines
+        pixels_per_degree = 5.0             # How much drift per degree
+
+        grid_width_for_full_rotation = 360 * pixels_per_degree
+        shift_x = - (self.heading % 360) * pixels_per_degree
+
+        # Now calculate enough lines to cover the total grid range plus the screen
+        num_lines = int((grid_width_for_full_rotation // spacing) + (width // spacing)) + 4
+
+        line_color_base = QColor(150, 150, 150)  # Faint gray
+        max_opacity = 80
+
+        for i in range(-num_lines, num_lines + 1):
+            line_x = center_x + i * spacing + shift_x
+
+            # Fade out near the edges
+            distance_from_center = abs(line_x - center_x)
+            fade = max(0.0, 1.0 - (distance_from_center / (width / 2)))
+            alpha = int(max_opacity * fade)
+
+            color = QColor(line_color_base)
+            color.setAlpha(alpha)
+
+            painter.setPen(QPen(color, 1))
+            painter.drawLine(int(line_x), 0, int(line_x), height)
+            
+    def draw_pitch_reference_grid(self, painter):
+        rect = self.rect()
+        width = rect.width()
+        height = rect.height()
+        center_y = rect.center().y()
+
+        pitch_spacing_deg = 10           # <<< Degrees between pitch lines (adjustable)
+        max_pitch = int(self.max_angle)
+       # Uses your existing max_angle (90°)
+        pixels_per_degree = height / (2 * max_pitch)  # Scale pitch range to widget height
+
+        line_color_base = QColor(255, 255, 0)  # Faint yellow
+        max_opacity = 80
+
+        # Draw lines from -max_pitch to +max_pitch
+        pitch_offset = self.pitch  # Smoothed current pitch value
+
+        for pitch_deg in range(-max_pitch, max_pitch + 1, pitch_spacing_deg):
+            y_offset = -(pitch_deg - pitch_offset) * pixels_per_degree  # Shift lines based on pitch!
+            line_y = center_y + y_offset
+
+            if line_y < 0 or line_y > height:
+                continue  # Skip lines outside the visible area
+
+            # Fade out near top/bottom edges
+            distance_from_center = abs(line_y - center_y)
+            fade = max(0.0, 1.0 - (distance_from_center / (height / 2)))
+            alpha = int(max_opacity * fade)
+
+            color = QColor(line_color_base)
+            color.setAlpha(alpha)
+
+            # Thicker or highlighted line at 0° (level)
+            if pitch_deg == 0:
+                painter.setPen(QPen(color, 2))
+            else:
+                painter.setPen(QPen(color, 1))
+
+            painter.drawLine(0, int(line_y), width, int(line_y))
+
+
+
+
+
 
 
 
     def paintEvent(self, event):
+        
+
         # Smooth toward target values before drawing
         self.roll = self.smooth_update_value(self.roll, self.target_roll)
         self.pitch = self.smooth_update_value(self.pitch, self.target_pitch)
+        # Smooth heading update with wrap-around handling
+        delta = (self.target_heading - self.heading + 540) % 360 - 180  # shortest path around circle
+        self.heading = (self.heading + 0.2 * delta) % 360
+
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -50,6 +141,9 @@ class AttitudeIndicator(QWidget):
 
         center = self.rect().center()
         width = self.rect().width()
+        self.draw_pitch_reference_grid(painter)
+
+        self.draw_heading_reference_grid(painter)
 
         # Normalize pitch and roll to range -1 to 1
         norm_pitch = max(min(self.pitch / self.max_angle, 1.0), -1.0)

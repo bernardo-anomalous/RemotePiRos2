@@ -101,11 +101,13 @@ class AUVControlGUI(QWidget):
             self.attitude_widget.update_attitude_target(self.ros_node.euler)
 
         if self.ros_node.heading is not None:
-            self.heading_hud.update_heading_target(self.ros_node.heading)  # <-- Make sure this matches!
-        
+            self.heading_hud.update_heading_target(self.ros_node.heading)
+            self.attitude_widget.update_heading_target(self.ros_node.heading)  # <<< THIS WAS MISSING
+
         # Force repaint (rely on the widget's smoothing)
         self.attitude_widget.update()
         self.heading_hud.update()
+
 
 
 
