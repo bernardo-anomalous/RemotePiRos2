@@ -25,7 +25,11 @@ class AUVControlGUI(QWidget):
         self.ros_node = ros_node
         self.setWindowTitle("NOSTROMO-AUV CONTROL")
         self.setGeometry(0, 0, 600, 1024)
-        self.showFullScreen()
+        #self.showFullScreen()
+        screen_geometry = QApplication.desktop().screenGeometry()
+        self.setGeometry(screen_geometry)                  # Explicitly set the window size to match the screen
+        self.setFixedSize(screen_geometry.width(), screen_geometry.height())  # Lock it down fully
+
 
         # === GUI Styling and Background ===
         script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -174,6 +178,7 @@ class AUVControlGUI(QWidget):
         left_layout.addWidget(self.imu_health_label)
         self.servo_status_label = QLabel("SERVO DRIVER STATUS: UNKNOWN")
         self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.servo_status_label.setWordWrap(True)
         left_layout.addWidget(self.servo_status_label)
 
                 
@@ -432,17 +437,18 @@ class AUVControlGUI(QWidget):
             self.imu_health_label.setText("IMU HEALTH: UNKNOWN")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
             
-                # === Update Servo Driver Status Label ===
         servo_status = self.ros_node.servo_driver_status
         self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
 
-        # Optional: You can also color-code the status if you want (like you did for IMU health)
-        if "OK" in servo_status.upper():
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")
-        elif "ERROR" in servo_status.upper() or "FAULT" in servo_status.upper():
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")
+        if "NOMINAL" in servo_status.upper():
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")  # Green
+        elif "BUSY" in servo_status.upper():
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Yellow / Orange
+        elif "UNKNOWN" in servo_status.upper():
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")  # Gray
         else:
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red for anything else (errors, faults)
+
 
 
 

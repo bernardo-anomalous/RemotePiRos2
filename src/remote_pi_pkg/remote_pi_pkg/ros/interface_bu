@@ -41,7 +41,7 @@ class ROSInterface(Node):
         self.lifecycle_client = self.create_client(ChangeState, 'servo_driver_node/change_state')
         
         
-        
+        self.create_subscription(String, 'servo_driver_status', self.servo_status_callback, 10)
 
         if not self.lifecycle_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().warn("LIFECYCLE SERVICE NOT AVAILABLE. CONTINUING WITHOUT IT.")
@@ -232,6 +232,21 @@ class ROSInterface(Node):
         except Exception as e:
             self.get_logger().error(f"Error during lifecycle service call: {e}")
     
+    def servo_status_callback(self, msg):
+        status_word = msg.data.split(":")[0].strip().lower()
+
+        if status_word == "busy":
+            if self.roll_pid_enabled:
+                self.get_logger().info("[ROSInterface] Servo driver busy — deactivating Roll PID.")
+                self.set_pid(False)
+                self.roll_pid_enabled = False
+
+        elif status_word == "nominal":
+            if self.pid_reattach_pending:
+                self.get_logger().info("[ROSInterface] Servo driver nominal — reactivating Roll PID (post-canned).")
+                self.set_pid(True)
+                self.roll_pid_enabled = True
+                self.pid_reattach_pending = False
 
 
     def wing_pid_status_callback(self, msg):
