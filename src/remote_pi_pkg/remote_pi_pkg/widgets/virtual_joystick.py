@@ -17,6 +17,16 @@ class VirtualJoystickWidget(QWidget):
         self.callback = None  # Callback: function(norm_x, norm_y)
         
         self.sticky_mode = False  # Default to momentary mode
+        self.last_sent_x = None
+        self.last_sent_y = None
+
+    def send_callback_if_changed(self, norm_x, norm_y):
+        # Only publish if the value changed OR if it's the first time sending
+        if (self.last_sent_x != norm_x) or (self.last_sent_y != norm_y):
+            if self.callback:
+                self.callback(norm_x, norm_y)
+            self.last_sent_x = norm_x
+            self.last_sent_y = norm_y
 
 
     def sizeHint(self):
@@ -57,19 +67,23 @@ class VirtualJoystickWidget(QWidget):
                 offset = offset * factor
             self.knob_pos = center + offset
             self.update()
+
             norm_x = offset.x() / max_radius
             norm_y = -offset.y() / max_radius  # Invert Y: up is positive
-            if self.callback:
-                self.callback(norm_x, norm_y)
+
+            # === NEW: Use the safe callback logic ===
+            self.send_callback_if_changed(norm_x, norm_y)
+
 
     def mouseReleaseEvent(self, event):
-        
         self.dragging = False
 
         if not self.sticky_mode:
-            self.knob_pos = self.rect().center()  # reset to center only in momentary mode
+            self.knob_pos = self.rect().center()  # Snap back visually
+            self.update()
 
-            if self.callback:
-                self.callback(0.0, 0.0)
-        self.update()
+            # Always ensure 0.0 is published when releasing
+            self.send_callback_if_changed(0.0, 0.0)
+
+
 

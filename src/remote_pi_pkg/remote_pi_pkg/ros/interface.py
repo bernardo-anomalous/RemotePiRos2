@@ -64,6 +64,14 @@ class ROSInterface(Node):
         self.current_lifecycle_state = None
         self.create_timer(0.1, self.check_get_state_future)  # Check every 100 ms
         self.lifecycle_state_poll_timer = self.create_timer(1.0, self.poll_lifecycle_state)  # Every 1 second
+        
+        self.servo_driver_status = "UNKNOWN"  # Default state until data arrives
+        self.create_subscription(String, 'servo_driver_status', self.servo_status_callback, 10)
+        
+    def servo_status_callback(self, msg):
+        self.servo_driver_status = msg.data
+
+
 
 
 

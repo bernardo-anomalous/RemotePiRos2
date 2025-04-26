@@ -172,6 +172,11 @@ class AUVControlGUI(QWidget):
         self.imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
         self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
         left_layout.addWidget(self.imu_health_label)
+        self.servo_status_label = QLabel("SERVO DRIVER STATUS: UNKNOWN")
+        self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        left_layout.addWidget(self.servo_status_label)
+
+                
 
 
         # NEW: Toggle button replacing old activate/deactivate buttons
@@ -282,7 +287,7 @@ class AUVControlGUI(QWidget):
         #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
     def joystick_callback(self, norm_x, norm_y):
-        max_angle = 90.0  # or change to 45.0 for tighter control
+        max_angle = 45.0  # or change to 45.0 for tighter control
 
         # === Simple Debounce to prevent flooding ===
         if not hasattr(self, 'last_joystick_publish'):
@@ -426,6 +431,19 @@ class AUVControlGUI(QWidget):
         else:
             self.imu_health_label.setText("IMU HEALTH: UNKNOWN")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+            
+                # === Update Servo Driver Status Label ===
+        servo_status = self.ros_node.servo_driver_status
+        self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
+
+        # Optional: You can also color-code the status if you want (like you did for IMU health)
+        if "OK" in servo_status.upper():
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")
+        elif "ERROR" in servo_status.upper() or "FAULT" in servo_status.upper():
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")
+        else:
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+
 
 
                         
