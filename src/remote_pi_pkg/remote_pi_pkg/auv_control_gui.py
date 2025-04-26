@@ -296,7 +296,7 @@ class AUVControlGUI(QWidget):
         #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
     def joystick_callback(self, norm_x, norm_y):
-        max_angle = 45.0  # or change to 45.0 for tighter control
+        max_angle = 15.0  # or change to 45.0 for tighter control
 
         # === Simple Debounce to prevent flooding ===
         if not hasattr(self, 'last_joystick_publish'):
