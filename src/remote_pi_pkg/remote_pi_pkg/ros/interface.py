@@ -69,8 +69,11 @@ class ROSInterface(Node):
 
         
     def imu_health_callback(self, msg):
+        
         self.imu_health_status = msg.data
         self.get_logger().info(f"[ROSInterface] IMU Health Status: {self.imu_health_status}")
+        print(f"IMU HEALTH CALLBACK FIRED: {msg.data}")
+        
 
 
 
@@ -159,7 +162,7 @@ class ROSInterface(Node):
             # Parse heading like 'Heading: East, 123.45 degrees'
             heading_value = float(heading_str.split(',')[1].strip().split()[0])
             self.heading = heading_value
-            self.get_logger().info(f"HEADING RECEIVED: {self.heading} degrees")
+            #self.get_logger().info(f"HEADING RECEIVED: {self.heading} degrees")
         except Exception as e:
             self.get_logger().error(f"Failed to parse heading string: {e}")
 

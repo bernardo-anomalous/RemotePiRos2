@@ -90,16 +90,17 @@ class AUVControlGUI(QWidget):
         self.visual_update_timer.start(16)  # About 60 FPS
         
     def update_visuals(self):
-        # Update target values from ROS topics
+        # Send target values to widgets every frame
         if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
             self.attitude_widget.update_attitude_target(self.ros_node.euler)
 
         if self.ros_node.heading is not None:
-            self.heading_hud.update_heading_target(self.ros_node.heading)
-
-        # Trigger repaint (each widget should handle smoothing internally)
+            self.heading_hud.update_heading_target(self.ros_node.heading)  # <-- Make sure this matches!
+        
+        # Force repaint (rely on the widget's smoothing)
         self.attitude_widget.update()
         self.heading_hud.update()
+
 
 
 
@@ -198,20 +199,21 @@ class AUVControlGUI(QWidget):
         left_layout.addWidget(self.btn_duration_decrease)
         left_layout.addWidget(self.btn_toggle_sticky)
 
-        # Control status area with scrolling
+        # Control status area without scrolling — expanding to fit content
         self.control_status_field = ControlStatusField()
-        self.control_status_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.control_status_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
         self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
-        self.control_status_field.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.control_status_field.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.control_status_field.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setWidget(self.control_status_field)
+        # Connect resizing behavior
+        self.control_status_field.textChanged.connect(self.adjust_control_status_height)
+
         left_layout.addWidget(QLabel("CONTROL STATUS"))
-        left_layout.addWidget(scroll_area)
+        left_layout.addWidget(self.control_status_field)
         left_layout.addStretch(1)
+
 
         main_layout.addLayout(left_layout, 1)
 
@@ -243,6 +245,12 @@ class AUVControlGUI(QWidget):
         self.status_update_timer.timeout.connect(self.update_status)
         self.status_update_timer.start(50)
         self.update_lifecycle_buttons()  # Check the state immediately on startup
+        
+    def adjust_control_status_height(self):
+        doc_height = self.control_status_field.document().size().height()
+        padding = 10  # You can tweak this padding if needed
+        self.control_status_field.setMinimumHeight(int(doc_height + padding))
+
 
 
     def make_lifecycle_callback(self, transition_id):
@@ -382,6 +390,8 @@ class AUVControlGUI(QWidget):
         # === Selective Repainting (Only if Changed) ===
         if getattr(self, 'last_control_status', None) != control_status:
             self.control_status_field.setHtml(control_status)
+            self.adjust_control_status_height()
+
             self.last_control_status = control_status
 
         if getattr(self, 'last_overall_status', None) != overall_status:
@@ -390,11 +400,12 @@ class AUVControlGUI(QWidget):
 
         # === Always Update Heading Widget ===
         if self.ros_node.heading is not None:
-            self.heading_hud.update_heading(self.ros_node.heading)
+            self.heading_hud.update_heading_target(self.ros_node.heading)
 
         # === Always Update Attitude Widget (Pose) ===
         if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
-            self.attitude_widget.update_attitude(self.ros_node.euler)
+            self.attitude_widget.update_attitude_target(self.ros_node.euler)
+
             self.attitude_widget.update()
 
         # === Update PID Toggle Button State ===
