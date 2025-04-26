@@ -9,9 +9,6 @@ class AttitudeIndicator(QWidget):
         super().__init__(parent)
         self.roll = 0.0
         self.pitch = 0.0
-        self.target_roll = 0.0
-        self.target_pitch = 0.0
-
         self.setMinimumHeight(250)
         self.setMinimumWidth(200)
 
@@ -25,25 +22,16 @@ class AttitudeIndicator(QWidget):
         self.intensity_color = QColor("#FF4500")  # Orange-red (intensity fill)
         self.horizon_color = QColor("#00FF00")  # Green (horizon lines)
 
-    def update_attitude_target(self, euler):
-        """Set the target roll and pitch (called by the GUI)."""
+    def update_attitude(self, euler):
         if euler and len(euler) >= 2:
             try:
-                self.target_roll = float(euler[0])
-                self.target_pitch = float(euler[1])
+                self.roll = float(euler[0])
+                self.pitch = float(euler[1])
+                self.update()
             except Exception:
                 pass
-            
-    def smooth_update_value(self, current, target, factor=0.2):
-        return current + factor * (target - current)
-
-
 
     def paintEvent(self, event):
-        # Smooth toward target values before drawing
-        self.roll = self.smooth_update_value(self.roll, self.target_roll)
-        self.pitch = self.smooth_update_value(self.pitch, self.target_pitch)
-
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.fillRect(self.rect(), Qt.transparent)

@@ -14,19 +14,10 @@ class HeadingBarWidget(QWidget):
         self.setMinimumHeight(110)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setStyleSheet("background: transparent;")
-        self.heading = 0.0
-        self.target_heading = 0.0
 
-    def update_heading_target(self, heading):
-        """Set the target heading, called by the GUI every frame."""
-        self.target_heading = heading % 360
-        
-    def smooth_update_value(self, current, target, factor=0.2):
-        # Shortest path around the circle (handles wrap-around at 360°)
-        delta = (target - current + 540) % 360 - 180
-        return (current + factor * delta) % 360
-
-
+    def update_heading(self, heading):
+        self.heading = heading % 360
+        self.update()
         
     def heading_to_cardinal(self, degrees):
         directions = [
@@ -47,7 +38,6 @@ class HeadingBarWidget(QWidget):
         height = rect.height()
         center_x = width // 2
         center_y = height // 2
-        self.heading = self.smooth_update_value(self.heading, self.target_heading)
 
         painter.setPen(QPen(QColor("#00FF00"), 2))
         painter.drawLine(0, center_y, width, center_y)

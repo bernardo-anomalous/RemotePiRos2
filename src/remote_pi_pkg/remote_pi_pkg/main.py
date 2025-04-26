@@ -1,8 +1,13 @@
+import os
+
+# === Enable OpenGL acceleration ===
+os.environ['QT_QPA_PLATFORM'] = 'xcb'               # Try 'eglfs' if 'xcb' gives issues
+os.environ['QT_OPENGL'] = 'egl'                     # Options: 'egl', 'desktop', or 'angle'
+
 import sys
 import threading
 import rclpy
 from PyQt5.QtWidgets import QApplication
-
 from remote_pi_pkg.ros.interface import ROSInterface
 from remote_pi_pkg.auv_control_gui import AUVControlGUI
 
@@ -10,6 +15,7 @@ def ros_spin(node):
     rclpy.spin(node)
 
 def main():
+
     rclpy.init()
 
     # Start ROS node
@@ -26,6 +32,7 @@ def main():
     # Cleanup (not reached due to sys.exit, but good form)
     ros_node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()

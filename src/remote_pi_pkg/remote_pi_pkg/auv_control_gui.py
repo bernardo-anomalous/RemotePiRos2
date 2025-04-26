@@ -84,6 +84,24 @@ class AUVControlGUI(QWidget):
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
         self.status_update_timer.start(50)
+        # Visual update timer (runs at 60Hz)
+        self.visual_update_timer = QTimer()
+        self.visual_update_timer.timeout.connect(self.update_visuals)
+        self.visual_update_timer.start(16)  # About 60 FPS
+        
+    def update_visuals(self):
+        # Update target values from ROS topics
+        if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
+            self.attitude_widget.update_attitude_target(self.ros_node.euler)
+
+        if self.ros_node.heading is not None:
+            self.heading_hud.update_heading_target(self.ros_node.heading)
+
+        # Trigger repaint (each widget should handle smoothing internally)
+        self.attitude_widget.update()
+        self.heading_hud.update()
+
+
 
     def init_ui(self):
         
