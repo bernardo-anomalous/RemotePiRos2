@@ -11,7 +11,7 @@ class HeadingBarWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.heading = 0.0  # degrees (0 = NORTH)
-        self.setMinimumHeight(110)
+        self.setMinimumHeight(90)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setStyleSheet("background: transparent;")
         self.heading = 0.0
@@ -101,7 +101,7 @@ class HeadingBarWidget(QWidget):
 
         painter.setPen(QPen(QColor("#FF4500")))
         painter.setFont(QFont("Courier New", 14, QFont.Bold))
-        painter.drawText(center_x - 60, center_y - 40, heading_text)
+        painter.drawText(center_x + 10, center_y - 20, heading_text)
 
         painter.setFont(QFont("Courier New", 12))
-        painter.drawText(center_x - 40, center_y - 20, cardinal_text)
+        painter.drawText(center_x - 50, center_y - 20, cardinal_text)

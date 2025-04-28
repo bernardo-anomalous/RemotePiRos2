@@ -16,7 +16,7 @@ class AttitudeIndicator(QWidget):
         self.setMinimumWidth(200)
 
         # === Customizable Style Parameters ===
-        self.base_width = 60
+        self.base_width = 140
         # Triangle base half-width
         self.pitch_effect_scale = 1.0
         self.max_angle = 90.0  # Maximum pitch/roll for normalization
@@ -114,7 +114,7 @@ class AttitudeIndicator(QWidget):
 
             # Thicker or highlighted line at 0° (level)
             if pitch_deg == 0:
-                painter.setPen(QPen(color, 2))
+                painter.setPen(QPen(color, 3))
             else:
                 painter.setPen(QPen(color, 1))
 
@@ -181,7 +181,7 @@ class AttitudeIndicator(QWidget):
         nose_tip = transform.map(point_nose)  # Actual on-screen triangle tip position
 
         # Define endpoint (stopping short of pitch scale)
-        line_end_x = width - 60  # Slightly before the pitch bar
+        line_end_x = width - 140  # Slightly before the pitch bar
         line_end = QPointF(line_end_x, nose_tip.y())
 
         # Draw horizontal line from triangle tip to pitch scale
@@ -223,8 +223,8 @@ class AttitudeIndicator(QWidget):
         painter.drawLine(width - 30, center.y(), width - 10, center.y())
         
         # === Roll Arc on Left Side ===
-        arc_radius = 100
-        arc_center = QPointF(140, center.y())
+        arc_radius = 140
+        arc_center = QPointF(260, center.y())
         arc_rect = QRectF(arc_center.x() - arc_radius,
                         arc_center.y() - arc_radius,
                         arc_radius * 2,
@@ -233,7 +233,7 @@ class AttitudeIndicator(QWidget):
         # Draw arc: start at 90°, sweep 180° CCW (left half)
         painter.setPen(QPen(QColor("#00FF00"), 2))
         painter.setBrush(Qt.NoBrush)
-        painter.drawArc(arc_rect, 90 * 16, 180 * 16)
+        painter.drawArc(arc_rect, 130 * 16, 100 * 16)
 
         # === Marker position ===
         # Clamp roll value
@@ -256,7 +256,7 @@ class AttitudeIndicator(QWidget):
         # Draw roll value
         painter.setPen(QColor("#FF4500"))
         painter.setFont(QFont("Courier New", 12, QFont.Bold))
-        painter.drawText(marker_pos + QPointF(10, 5), f"{self.roll:.1f}°")
+        painter.drawText(marker_pos + QPointF(-70, 5), f"{self.roll:.1f}°")
         
         # === Depth Gauge ===
         if hasattr(self, 'current_depth') and hasattr(self, 'target_depth'):
@@ -276,7 +276,7 @@ class AttitudeIndicator(QWidget):
 
             # Position (top right corner with some padding)
             x_offset = self.width() - 80
-            y_center = 50  # Adjust as needed
+            y_center = 70  # Adjust as needed
 
             # Fadeout for previous and next numbers
             painter.setOpacity(0.3)

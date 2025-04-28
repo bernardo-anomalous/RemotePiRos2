@@ -11,7 +11,7 @@ from remote_pi_pkg.widgets.heading_bar import HeadingBarWidget
 from remote_pi_pkg.widgets.attitude_indicator import AttitudeIndicator
 from remote_pi_pkg.widgets.control_status_field import ControlStatusField
 from lifecycle_msgs.msg import Transition
-from PyQt5.QtWidgets import QScrollArea, QSizePolicy
+from PyQt5.QtWidgets import QScrollArea, QSizePolicy, QWidget
 from PyQt5.QtGui import QTextOption
 import time
 
@@ -99,6 +99,10 @@ class AUVControlGUI(QWidget):
         # Send target values to widgets every frame
         if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
             self.attitude_widget.update_attitude_target(self.ros_node.euler)
+            
+            # ✅ ADD THIS to fix your depth gauge:
+        if hasattr(self.ros_node, 'depth'):
+            self.attitude_widget.set_depth(self.ros_node.depth)
 
         if self.ros_node.heading is not None:
             self.heading_hud.update_heading_target(self.ros_node.heading)
@@ -113,15 +117,13 @@ class AUVControlGUI(QWidget):
 
 
     def init_ui(self):
-        
-        
+        from PyQt5.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QSizePolicy
 
-        # Add a timer to check lifecycle state every second
+        # Lifecycle Update Timer
         self.lifecycle_update_timer = QTimer()
         self.lifecycle_update_timer.timeout.connect(self.update_lifecycle_buttons)
-        self.lifecycle_update_timer.start(1000)  # Check every 1 second
+        self.lifecycle_update_timer.start(1000)
 
-        # === Tabs ===
         outer_layout = QVBoxLayout()
         tabs = QTabWidget()
 
@@ -167,28 +169,38 @@ class AUVControlGUI(QWidget):
         ]
 
         for btn, trans_id in button_transition_pairs:
-         btn.clicked.connect(self.make_lifecycle_callback(trans_id))
-         settings_layout.addWidget(btn)
+            btn.clicked.connect(self.make_lifecycle_callback(trans_id))
+            settings_layout.addWidget(btn)
 
         settings_layout.addWidget(self.label_current_state)
         settings_layout.addStretch(1)
-        settings_tab.setLayout(settings_layout)
         settings_layout.addWidget(self.btn_quit)
+        settings_tab.setLayout(settings_layout)
 
         # === OPERATION TAB ===
-        left_layout = QVBoxLayout()
+        top_status_row = QHBoxLayout()
         self.imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
         self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
-        left_layout.addWidget(self.imu_health_label)
         self.servo_status_label = QLabel("SERVO DRIVER STATUS: UNKNOWN")
         self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
         self.servo_status_label.setWordWrap(True)
-        left_layout.addWidget(self.servo_status_label)
+        top_status_row.addWidget(self.imu_health_label)
+        top_status_row.addWidget(self.servo_status_label)
+        operation_layout.addLayout(top_status_row)
 
-                
+        self.heading_hud = HeadingBarWidget()
+        self.heading_hud.setMaximumHeight(80)
+        #operation_layout.addWidget(QLabel("HEADING HUD"))
+        operation_layout.addWidget(self.heading_hud, alignment=Qt.AlignTop)
 
+        self.attitude_widget = AttitudeIndicator()
+        #operation_layout.addWidget(QLabel("ATTITUDE INDICATOR"))
+        operation_layout.addWidget(self.attitude_widget)
 
-        # NEW: Toggle button replacing old activate/deactivate buttons
+        main_layout = QHBoxLayout()
+
+        # === LEFT COLUMN ===
+        left_layout = QVBoxLayout()
         self.btn_pid_toggle = QPushButton("ROLL PID: INACTIVE")
         self.btn_pid_toggle.setCheckable(True)
         self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
@@ -206,59 +218,87 @@ class AUVControlGUI(QWidget):
         self.btn_duration_increase.clicked.connect(self.increase_duration)
         self.btn_duration_decrease.clicked.connect(self.decrease_duration)
 
-        # Add widgets to left layout
         left_layout.addWidget(self.btn_pid_toggle)
         left_layout.addWidget(self.btn_canned)
         left_layout.addWidget(self.btn_duration_increase)
         left_layout.addWidget(self.btn_duration_decrease)
         left_layout.addWidget(self.btn_toggle_sticky)
 
-        # Control status area without scrolling — expanding to fit content
+        # CONTROL STATUS with SCROLL
         self.control_status_field = ControlStatusField()
-        self.control_status_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.control_status_field.setReadOnly(True)
         self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
         self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
-        self.control_status_field.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.control_status_field.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        # Connect resizing behavior
-        self.control_status_field.textChanged.connect(self.adjust_control_status_height)
+        control_status_container = QWidget()
+        control_status_layout = QVBoxLayout(control_status_container)
+        control_status_layout.addWidget(QLabel("CONTROL STATUS"))
+        control_status_layout.addWidget(self.control_status_field)
+        control_status_layout.setContentsMargins(0, 0, 0, 0)
 
-        left_layout.addWidget(QLabel("CONTROL STATUS"))
-        left_layout.addWidget(self.control_status_field)
+        control_status_scroll = QScrollArea()
+        control_status_scroll.setWidgetResizable(True)
+        control_status_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        control_status_scroll.setWidget(control_status_container)
+
+        left_layout.addWidget(control_status_scroll)
         left_layout.addStretch(1)
-
-
         main_layout.addLayout(left_layout, 1)
 
         # === RIGHT COLUMN ===
         right_layout = QVBoxLayout()
-        self.heading_hud = HeadingBarWidget()
-        self.attitude_widget = AttitudeIndicator()
         self.virtual_joystick = VirtualJoystickWidget()
         self.virtual_joystick.callback = self.joystick_callback
 
-        right_layout.addWidget(QLabel("HEADING HUD"))
-        right_layout.addWidget(self.heading_hud)
-        right_layout.addWidget(QLabel("ATTITUDE INDICATOR"))
-        right_layout.addWidget(self.attitude_widget)
-        right_layout.addWidget(QLabel("VIRTUAL JOYSTICK"))
+        #right_layout.addWidget(QLabel("VIRTUAL JOYSTICK"))
         right_layout.addWidget(self.virtual_joystick)
         right_layout.addStretch(1)
         main_layout.addLayout(right_layout, 1)
 
         operation_layout.addLayout(main_layout)
+
+        # === SYSTEM STATUS with SCROLL ===
         self.status_display = QTextEdit()
         self.status_display.setReadOnly(True)
-        operation_layout.addWidget(QLabel("SYSTEM STATUS"))
-        operation_layout.addWidget(self.status_display)
+        self.status_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        system_status_container = QWidget()
+        system_status_layout = QVBoxLayout(system_status_container)
+        system_status_layout.addWidget(QLabel("SYSTEM STATUS"))
+        system_status_layout.addWidget(self.status_display)
+        system_status_layout.setContentsMargins(0, 0, 0, 0)
+        system_status_layout.setSpacing(5)
+
+        system_status_scroll = QScrollArea()
+        system_status_scroll.setWidgetResizable(True)
+        system_status_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        system_status_scroll.setWidget(system_status_container)
+
+        operation_layout.addWidget(system_status_scroll)
         operation_tab.setLayout(operation_layout)
 
-        # === STATUS UPDATE TIMER ===
+        # === Status Update Timer ===
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
         self.status_update_timer.start(50)
-        self.update_lifecycle_buttons()  # Check the state immediately on startup
+        self.update_lifecycle_buttons()
+
+        # === Touch-Friendly Scrollbars ===
+        self.setStyleSheet("""
+            QScrollBar:vertical {
+                width: 30px;
+                background: rgba(34, 34, 34, 220);
+            }
+            QScrollBar::handle:vertical {
+                background: #00FF00;
+                min-height: 40px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
+
+
         
     def adjust_control_status_height(self):
         doc_height = self.control_status_field.document().size().height()
@@ -421,6 +461,12 @@ class AUVControlGUI(QWidget):
             self.attitude_widget.update_attitude_target(self.ros_node.euler)
 
             self.attitude_widget.update()
+            
+                        # === Update Depth on the Attitude Widget ===
+        if hasattr(self.ros_node, 'depth'):
+            self.attitude_widget.set_depth(self.ros_node.depth)
+
+
 
         # === Update PID Toggle Button State ===
         self.update_pid_button_state()
@@ -452,6 +498,7 @@ class AUVControlGUI(QWidget):
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")  # Gray
         else:
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red for anything else (errors, faults)
+            
 
 
 

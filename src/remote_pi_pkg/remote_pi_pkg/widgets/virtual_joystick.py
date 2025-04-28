@@ -10,7 +10,7 @@ class VirtualJoystickWidget(QWidget):
     """
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(300, 300)
+        self.setMinimumSize(240, 240)
         self.knob_radius = 20
         self.dragging = False
         self.knob_pos = self.rect().center()
