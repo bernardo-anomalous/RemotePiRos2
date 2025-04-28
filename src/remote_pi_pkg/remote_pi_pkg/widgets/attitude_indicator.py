@@ -260,25 +260,33 @@ class AttitudeIndicator(QWidget):
         
         # === Depth Gauge ===
         if hasattr(self, 'current_depth') and hasattr(self, 'target_depth'):
-            # Smooth approach toward target_depth
-            smoothing_factor = 0.1  # Adjust this value (0.05 = slower, 0.3 = faster)
-            #depth_difference = self.target_depth - self.current_depth
-            self.current_depth += (self.target_depth - self.current_depth) * smoothing_factor
+            # Apply deadband directly in the GUI for sanity
+            deadband = 0.01  # 1 cm deadband at GUI level
+            target = self.target_depth
+
+            # Clamp tiny target depth values to zero
+            if abs(target) < deadband:
+                target = 0.0
+
+            # Only smooth if target is not zero
+            if target != 0.0:
+                smoothing_factor = 0.1
+                self.current_depth += (target - self.current_depth) * smoothing_factor
+            else:
+                # Directly snap to zero if target is zero
+                self.current_depth = 0.0
 
             font = QFont("Courier", 14)
             painter.setFont(font)
             painter.setPen(QColor("#00FFFF"))
 
-            # Prepare rolling depth numbers (previous, current, next)
-            current = self.current_depth
-            previous = current - 1
-            next_val = current + 1
+            current = round(self.current_depth, 2)
+            previous = round(current - 1, 2)
+            next_val = round(current + 1, 2)
 
-            # Position (top right corner with some padding)
             x_offset = self.width() - 80
-            y_center = 70  # Adjust as needed
+            y_center = 70
 
-            # Fadeout for previous and next numbers
             painter.setOpacity(0.3)
             painter.drawText(x_offset, y_center - 20, f"{previous}m")
 
@@ -288,7 +296,7 @@ class AttitudeIndicator(QWidget):
             painter.setOpacity(0.3)
             painter.drawText(x_offset, y_center + 20, f"{next_val}m")
 
-            painter.setOpacity(1.0)  # Reset opacity for other drawings
+            painter.setOpacity(1.0)
 
 
         
