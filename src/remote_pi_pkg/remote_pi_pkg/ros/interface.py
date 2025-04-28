@@ -67,12 +67,35 @@ class ROSInterface(Node):
         
         self.servo_driver_status = "UNKNOWN"  # Default state until data arrives
         self.create_subscription(String, 'servo_driver_status', self.servo_status_callback, 10)
+        #depth
+        self.depth = 0.0  # New: Store the latest depth reading
+        self.create_subscription(Float32, 'depth', self.depth_callback, 10)
+        
+    def depth_callback(self, msg):
+        self.depth = msg.data  # Existing storage
+
+        # Push the update to the GUI widget:
+        if hasattr(self, 'attitude_widget'):  # Check if widget exists
+            self.attitude_widget.set_depth(msg.data)
+
+
         
     def servo_status_callback(self, msg):
         self.servo_driver_status = msg.data
+        status_word = msg.data.split(":")[0].strip().lower()
 
+        if status_word == "busy":
+            if self.roll_pid_enabled:
+                self.get_logger().info("[ROSInterface] Servo driver busy — deactivating Roll PID.")
+                self.set_pid(False)
+                self.roll_pid_enabled = False
 
-
+        elif status_word == "nominal":
+            if self.pid_reattach_pending:
+                self.get_logger().info("[ROSInterface] Servo driver nominal — reactivating Roll PID (post-canned).")
+                self.set_pid(True)
+                self.roll_pid_enabled = True
+                self.pid_reattach_pending = False
 
 
         

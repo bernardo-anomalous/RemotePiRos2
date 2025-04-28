@@ -23,9 +23,15 @@ class AUVControlGUI(QWidget):
     def __init__(self, ros_node):
         super().__init__()
         self.ros_node = ros_node
-        self.setWindowTitle("NOSTROMO-AUV CONTROL")
-        self.setGeometry(0, 0, 600, 1024)
-        self.showFullScreen()
+        self.setWindowTitle("P.A.T.C.H-AUV CONTROL")
+        self.setFixedSize(600, 980)  # Completely locks resizing
+
+
+        #self.showFullScreen()
+        screen_geometry = QApplication.desktop().screenGeometry()
+        self.setGeometry(screen_geometry)                  # Explicitly set the window size to match the screen
+        #self.setFixedSize(screen_geometry.width(), screen_geometry.height())  # Lock it down fully
+
 
         # === GUI Styling and Background ===
         script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -84,6 +90,27 @@ class AUVControlGUI(QWidget):
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
         self.status_update_timer.start(50)
+        # Visual update timer (runs at 60Hz)
+        self.visual_update_timer = QTimer()
+        self.visual_update_timer.timeout.connect(self.update_visuals)
+        self.visual_update_timer.start(16)  # About 60 FPS
+        
+    def update_visuals(self):
+        # Send target values to widgets every frame
+        if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
+            self.attitude_widget.update_attitude_target(self.ros_node.euler)
+
+        if self.ros_node.heading is not None:
+            self.heading_hud.update_heading_target(self.ros_node.heading)
+            self.attitude_widget.update_heading_target(self.ros_node.heading)  # <<< THIS WAS MISSING
+
+        # Force repaint (rely on the widget's smoothing)
+        self.attitude_widget.update()
+        self.heading_hud.update()
+
+
+
+
 
     def init_ui(self):
         
@@ -153,6 +180,12 @@ class AUVControlGUI(QWidget):
         self.imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
         self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
         left_layout.addWidget(self.imu_health_label)
+        self.servo_status_label = QLabel("SERVO DRIVER STATUS: UNKNOWN")
+        self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.servo_status_label.setWordWrap(True)
+        left_layout.addWidget(self.servo_status_label)
+
+                
 
 
         # NEW: Toggle button replacing old activate/deactivate buttons
@@ -180,20 +213,21 @@ class AUVControlGUI(QWidget):
         left_layout.addWidget(self.btn_duration_decrease)
         left_layout.addWidget(self.btn_toggle_sticky)
 
-        # Control status area with scrolling
+        # Control status area without scrolling — expanding to fit content
         self.control_status_field = ControlStatusField()
-        self.control_status_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.control_status_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
         self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
-        self.control_status_field.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.control_status_field.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.control_status_field.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setWidget(self.control_status_field)
+        # Connect resizing behavior
+        self.control_status_field.textChanged.connect(self.adjust_control_status_height)
+
         left_layout.addWidget(QLabel("CONTROL STATUS"))
-        left_layout.addWidget(scroll_area)
+        left_layout.addWidget(self.control_status_field)
         left_layout.addStretch(1)
+
 
         main_layout.addLayout(left_layout, 1)
 
@@ -225,6 +259,12 @@ class AUVControlGUI(QWidget):
         self.status_update_timer.timeout.connect(self.update_status)
         self.status_update_timer.start(50)
         self.update_lifecycle_buttons()  # Check the state immediately on startup
+        
+    def adjust_control_status_height(self):
+        doc_height = self.control_status_field.document().size().height()
+        padding = 10  # You can tweak this padding if needed
+        self.control_status_field.setMinimumHeight(int(doc_height + padding))
+
 
 
     def make_lifecycle_callback(self, transition_id):
@@ -256,7 +296,7 @@ class AUVControlGUI(QWidget):
         #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
     def joystick_callback(self, norm_x, norm_y):
-        max_angle = 90.0  # or change to 45.0 for tighter control
+        max_angle = 15.0  # or change to 45.0 for tighter control
 
         # === Simple Debounce to prevent flooding ===
         if not hasattr(self, 'last_joystick_publish'):
@@ -364,6 +404,8 @@ class AUVControlGUI(QWidget):
         # === Selective Repainting (Only if Changed) ===
         if getattr(self, 'last_control_status', None) != control_status:
             self.control_status_field.setHtml(control_status)
+            self.adjust_control_status_height()
+
             self.last_control_status = control_status
 
         if getattr(self, 'last_overall_status', None) != overall_status:
@@ -372,11 +414,12 @@ class AUVControlGUI(QWidget):
 
         # === Always Update Heading Widget ===
         if self.ros_node.heading is not None:
-            self.heading_hud.update_heading(self.ros_node.heading)
+            self.heading_hud.update_heading_target(self.ros_node.heading)
 
         # === Always Update Attitude Widget (Pose) ===
         if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
-            self.attitude_widget.update_attitude(self.ros_node.euler)
+            self.attitude_widget.update_attitude_target(self.ros_node.euler)
+
             self.attitude_widget.update()
 
         # === Update PID Toggle Button State ===
@@ -397,6 +440,20 @@ class AUVControlGUI(QWidget):
         else:
             self.imu_health_label.setText("IMU HEALTH: UNKNOWN")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+            
+        servo_status = self.ros_node.servo_driver_status
+        self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
+
+        if "NOMINAL" in servo_status.upper():
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")  # Green
+        elif "BUSY" in servo_status.upper():
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Yellow / Orange
+        elif "UNKNOWN" in servo_status.upper():
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")  # Gray
+        else:
+            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red for anything else (errors, faults)
+
+
 
 
                         

@@ -99,6 +99,10 @@ class AUVControlGUI(QWidget):
         # Send target values to widgets every frame
         if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
             self.attitude_widget.update_attitude_target(self.ros_node.euler)
+            
+            # ✅ ADD THIS to fix your depth gauge:
+        if hasattr(self.ros_node, 'depth'):
+            self.attitude_widget.set_depth(self.ros_node.depth)
 
         if self.ros_node.heading is not None:
             self.heading_hud.update_heading_target(self.ros_node.heading)
@@ -421,6 +425,12 @@ class AUVControlGUI(QWidget):
             self.attitude_widget.update_attitude_target(self.ros_node.euler)
 
             self.attitude_widget.update()
+            
+                        # === Update Depth on the Attitude Widget ===
+        if hasattr(self.ros_node, 'depth'):
+            self.attitude_widget.set_depth(self.ros_node.depth)
+
+
 
         # === Update PID Toggle Button State ===
         self.update_pid_button_state()
@@ -452,6 +462,7 @@ class AUVControlGUI(QWidget):
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")  # Gray
         else:
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red for anything else (errors, faults)
+            
 
 
 

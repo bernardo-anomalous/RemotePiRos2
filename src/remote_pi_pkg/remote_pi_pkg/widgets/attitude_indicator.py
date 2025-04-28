@@ -27,6 +27,9 @@ class AttitudeIndicator(QWidget):
         self.target_heading = 0.0  # Add this next to roll and pitch
         self.heading = 0.0                # Current smoothed heading
         self.target_heading = 0.0         # Target heading from update
+        self.current_depth = 0.0
+        self.target_depth = 0.0   # Updated directly from the ROS topic
+
 
 
 
@@ -254,6 +257,47 @@ class AttitudeIndicator(QWidget):
         painter.setPen(QColor("#FF4500"))
         painter.setFont(QFont("Courier New", 12, QFont.Bold))
         painter.drawText(marker_pos + QPointF(10, 5), f"{self.roll:.1f}°")
+        
+        # === Depth Gauge ===
+        if hasattr(self, 'current_depth') and hasattr(self, 'target_depth'):
+            # Smooth approach toward target_depth
+            smoothing_factor = 0.1  # Adjust this value (0.05 = slower, 0.3 = faster)
+            #depth_difference = self.target_depth - self.current_depth
+            self.current_depth += (self.target_depth - self.current_depth) * smoothing_factor
+
+            font = QFont("Courier", 14)
+            painter.setFont(font)
+            painter.setPen(QColor("#00FFFF"))
+
+            # Prepare rolling depth numbers (previous, current, next)
+            current = self.current_depth
+            previous = current - 1
+            next_val = current + 1
+
+            # Position (top right corner with some padding)
+            x_offset = self.width() - 80
+            y_center = 50  # Adjust as needed
+
+            # Fadeout for previous and next numbers
+            painter.setOpacity(0.3)
+            painter.drawText(x_offset, y_center - 20, f"{previous}m")
+
+            painter.setOpacity(1.0)
+            painter.drawText(x_offset, y_center, f"{current}m")
+
+            painter.setOpacity(0.3)
+            painter.drawText(x_offset, y_center + 20, f"{next_val}m")
+
+            painter.setOpacity(1.0)  # Reset opacity for other drawings
+
+
+        
+    def set_depth(self, depth_value):
+        self.target_depth = depth_value  # Target value from the topic
+        #print(f"Depth updated: {depth_value}")
+
+
+
 
 """         # === Vertical Pitch Scale (Right Side) ===
         bar_x = float(width - 30)
