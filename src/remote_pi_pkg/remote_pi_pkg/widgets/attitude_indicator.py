@@ -29,6 +29,26 @@ class AttitudeIndicator(QWidget):
         self.target_heading = 0.0         # Target heading from update
         self.current_depth = 0.0
         self.target_depth = 0.0   # Updated directly from the ROS topic
+        self.target_accel_x = 0.0
+        self.target_accel_y = 0.0
+        self.display_accel_x = 0.0
+        self.display_accel_y = 0.0
+        self.visual_gain = 100.0  # Amplify acceleration visually
+
+
+    def set_acceleration(self, accel_x, accel_y, accel_z):
+        """Called by ROSInterface to update acceleration vector."""
+        print(f"[SET_ACCELERATION] Target set to: x={self.target_accel_x}, y={self.target_accel_y}")
+        print(f"[SET_ACCELERATION] Raw incoming: x={accel_x}, y={accel_y}, z={accel_z}")
+
+        try:
+            self.target_accel_x = float(accel_y) * self.visual_gain      # Swap X and Y
+            self.target_accel_y = float(accel_x) * self.visual_gain     # Swap X and Y + invert
+
+            self.update()  # Important: triggers repaint
+        except Exception as e:
+            print(f"[AttitudeIndicator] set_acceleration error: {e}")
+
 
 
 
@@ -128,152 +148,130 @@ class AttitudeIndicator(QWidget):
 
 
     def paintEvent(self, event):
-        
-
-        # Smooth toward target values before drawing
+        # === Smooth updates ===
         self.roll = self.smooth_update_value(self.roll, self.target_roll)
         self.pitch = self.smooth_update_value(self.pitch, self.target_pitch)
-        # Smooth heading update with wrap-around handling
-        delta = (self.target_heading - self.heading + 540) % 360 - 180  # shortest path around circle
+        delta = (self.target_heading - self.heading + 540) % 360 - 180
         self.heading = (self.heading + 0.2 * delta) % 360
-
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.fillRect(self.rect(), Qt.transparent)
 
-        center = self.rect().center()
-        width = self.rect().width()
-        self.draw_pitch_reference_grid(painter)
+        rect = self.rect()
+        center = rect.center()
+        center_x = center.x()
+        center_y = center.y()
+        width = rect.width()
+        height = rect.height()
 
+        # === Reference Grids ===
+        self.draw_pitch_reference_grid(painter)
         self.draw_heading_reference_grid(painter)
 
-        # Normalize pitch and roll to range -1 to 1
+        # === Normalized Pitch/Roll ===
         norm_pitch = max(min(self.pitch / self.max_angle, 1.0), -1.0)
         norm_roll = max(min(self.roll / self.max_angle, 1.0), -1.0)
-        max_intensity = max(abs(norm_pitch), abs(norm_roll))
+        pitch_intensity = abs(norm_pitch)
 
-        # === Triangle Dimensions ===
-        base_half_width = self.base_width  # Half the triangle base (left/right)
-        equilateral_height = base_half_width * (3**0.5)  # Full height at 90° pitch
+        # === Triangle Geometry ===
+        base_half_width = self.base_width
+        equilateral_height = base_half_width * (3**0.5)
+        nose_y = -equilateral_height * norm_pitch
 
-        # Morph from flat (0 height) to equilateral (max height) based on pitch
-        nose_y = -equilateral_height * norm_pitch  # Invert Y to match natural pitch sense
-
-        # Triangle points (centered at origin)
         point_nose = QPointF(0, nose_y)
         point_left = QPointF(-base_half_width, 0)
         point_right = QPointF(base_half_width, 0)
         triangle = [point_nose, point_left, point_right]
 
-        # Transform to center of widget and apply roll
         transform = QTransform()
-        transform.translate(center.x(), center.y())
+        transform.translate(center_x, center_y)
         transform.rotate(self.roll)
         transformed = [transform.map(p) for p in triangle]
 
-        # Draw pose triangle
+        # === Outer Triangle ===
         painter.setBrush(QBrush(self.outer_color))
         painter.setPen(QPen(self.outer_color, 2))
         painter.drawPolygon(*transformed)
-        
-        # === Triangle-to-Pitch-Scale Visual Link ===
-        nose_tip = transform.map(point_nose)  # Actual on-screen triangle tip position
 
-        # Define endpoint (stopping short of pitch scale)
-        line_end_x = width - 140  # Slightly before the pitch bar
+        # === Nose Line to Pitch Scale ===
+        nose_tip = transform.map(point_nose)
+        line_end_x = width - 140
         line_end = QPointF(line_end_x, nose_tip.y())
 
-        # Draw horizontal line from triangle tip to pitch scale
-        painter.setPen(QPen(QColor("#00FF00"), 1, Qt.DashLine))  # Dashed green line
+        painter.setPen(QPen(QColor("#00FF00"), 1, Qt.DashLine))
         painter.drawLine(nose_tip, line_end)
 
-        # Draw pitch label at end
         painter.setPen(QPen(QColor("#FF4500")))
         painter.setFont(QFont("Courier New", 12, QFont.Bold))
         painter.drawText(line_end + QPointF(5, 5), f"{self.pitch:+.1f}°")
 
+        # === New Triangle Scaling ===
+        # Scale from 0.5 (smallest) to 1.5 (largest) depending on pitch
+        inner_scale = 0.1 + (abs(self.pitch) / self.max_angle)  # 1.0 at 0°, 2.0 at 90°
 
-        # Adjust intensity triangle color based on pitch safety range
-        if abs(self.pitch) <= 45.0:
-            fill_color = QColor("#FFFFFF")  # White = safe
+        # === New Color Behavior ===
+        if abs(self.pitch) > 25.0:
+            fill_color = QColor("#FF0000")  # Bright RED if pitch out of safe range
         else:
-            fill_color = QColor("#FF4500")  # Red-orange = danger
+            fill_color = QColor("#00AA00")  # Strong GREEN if safe
 
-        inner_scale = 0.1 + 0.9 * max_intensity
         inner_triangle = [QPointF(p.x() * inner_scale, p.y() * inner_scale) for p in triangle]
         inner_transformed = [transform.map(p) for p in inner_triangle]
 
-        # First fill
         painter.setBrush(QBrush(fill_color))
         painter.setPen(Qt.NoPen)
         painter.drawPolygon(*inner_transformed)
 
-        # Outline pass
-        outline_color = QColor("#00FF00s")  # 💡 Try #335544 or translucent white too
         painter.setBrush(Qt.NoBrush)
-        painter.setPen(QPen(outline_color, 3))
+        painter.setPen(QPen(QColor("#00FF00"), 1))
         painter.drawPolygon(*inner_transformed)
-        
 
-
-        # Horizon markers
+        # === Horizon Markers ===
         painter.setPen(QPen(self.horizon_color, 2))
-        painter.drawLine(10, center.y(), 30, center.y())
-        painter.drawLine(width - 30, center.y(), width - 10, center.y())
-        
-        # === Roll Arc on Left Side ===
+        painter.drawLine(10, center_y, 30, center_y)
+        painter.drawLine(width - 30, center_y, width - 10, center_y)
+
+        # === Roll Arc & Marker ===
         arc_radius = 140
-        arc_center = QPointF(260, center.y())
+        arc_center = QPointF(260, center_y)
         arc_rect = QRectF(arc_center.x() - arc_radius,
                         arc_center.y() - arc_radius,
                         arc_radius * 2,
                         arc_radius * 2)
 
-        # Draw arc: start at 90°, sweep 180° CCW (left half)
         painter.setPen(QPen(QColor("#00FF00"), 2))
         painter.setBrush(Qt.NoBrush)
         painter.drawArc(arc_rect, 130 * 16, 100 * 16)
 
-        # === Marker position ===
-        # Clamp roll value
         clamped_roll = max(min(self.roll, 90.0), -90.0)
-
-        # Map roll: +90 (top) → 0 (middle) → -90 (bottom)
-        # Angle in radians: 180° (top), 270° (middle), 360° (bottom)
-        angle_deg = 180 + clamped_roll  # So +90 becomes 270, 0 becomes 180, -90 becomes 90
+        angle_deg = 180 + clamped_roll
         angle_rad = math.radians(-angle_deg)
 
         marker_x = arc_center.x() + arc_radius * math.cos(angle_rad)
         marker_y = arc_center.y() - arc_radius * math.sin(angle_rad)
         marker_pos = QPointF(marker_x, marker_y)
 
-        # Draw marker
         painter.setBrush(QBrush(QColor("#FF4500")))
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(marker_pos, 5, 5)
 
-        # Draw roll value
         painter.setPen(QColor("#FF4500"))
         painter.setFont(QFont("Courier New", 12, QFont.Bold))
         painter.drawText(marker_pos + QPointF(-70, 5), f"{self.roll:.1f}°")
-        
+
         # === Depth Gauge ===
         if hasattr(self, 'current_depth') and hasattr(self, 'target_depth'):
-            # Apply deadband directly in the GUI for sanity
-            deadband = 0.01  # 1 cm deadband at GUI level
+            deadband = 0.01
             target = self.target_depth
 
-            # Clamp tiny target depth values to zero
             if abs(target) < deadband:
                 target = 0.0
 
-            # Only smooth if target is not zero
             if target != 0.0:
                 smoothing_factor = 0.1
                 self.current_depth += (target - self.current_depth) * smoothing_factor
             else:
-                # Directly snap to zero if target is zero
                 self.current_depth = 0.0
 
             font = QFont("Courier", 14)
@@ -285,84 +283,66 @@ class AttitudeIndicator(QWidget):
             next_val = round(current + 1, 2)
 
             x_offset = self.width() - 80
-            y_center = 70
+            y_center_text = 70
 
             painter.setOpacity(0.3)
-            painter.drawText(x_offset, y_center - 20, f"{previous}m")
+            painter.drawText(x_offset, y_center_text - 20, f"{previous}m")
 
             painter.setOpacity(1.0)
-            painter.drawText(x_offset, y_center, f"{current}m")
+            painter.drawText(x_offset, y_center_text, f"{current}m")
 
             painter.setOpacity(0.3)
-            painter.drawText(x_offset, y_center + 20, f"{next_val}m")
+            painter.drawText(x_offset, y_center_text + 20, f"{next_val}m")
 
             painter.setOpacity(1.0)
 
+        # === Moving Acceleration Dot + Ghost Trail ===
+        fast_factor = 0.4
+        slow_decay = 0.98
+
+        self.display_accel_x += (self.target_accel_x - self.display_accel_x) * fast_factor
+        self.display_accel_y += (self.target_accel_y - self.display_accel_y) * fast_factor
+
+        if abs(self.target_accel_x) < 0.05 and abs(self.target_accel_y) < 0.05:
+            self.display_accel_x *= slow_decay
+            self.display_accel_y *= slow_decay
+
+        if not hasattr(self, 'trail_points'):
+            self.trail_points = []
+            self.max_trail_length = 15
+
+        current_dot_pos = (center_x + self.display_accel_x, center_y + self.display_accel_y)
+        self.trail_points.append(current_dot_pos)
+
+        if len(self.trail_points) > self.max_trail_length:
+            self.trail_points.pop(0)
+
+        # === Draw ghost trail ===
+        for i, pos in enumerate(self.trail_points):
+            alpha = int(255 * (i + 1) / self.max_trail_length)
+            ghost_color = QColor(255, 255, 255, alpha)
+            painter.setBrush(QBrush(ghost_color))
+            painter.setPen(Qt.NoPen)
+            dot_size = max(2, 6 - int(i / 2))
+            painter.drawEllipse(
+                int(pos[0]) - dot_size // 2,
+                int(pos[1]) - dot_size // 2,
+                dot_size,
+                dot_size
+            )
+
+        # === Draw final white dot ===
+        dot_radius = 4
+        painter.setBrush(QBrush(Qt.white))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(
+            int(current_dot_pos[0]) - dot_radius,
+            int(current_dot_pos[1]) - dot_radius,
+            dot_radius * 2,
+            dot_radius * 2
+        )
 
         
     def set_depth(self, depth_value):
         self.target_depth = depth_value  # Target value from the topic
         #print(f"Depth updated: {depth_value}")
-
-
-
-
-"""         # === Vertical Pitch Scale (Right Side) ===
-        bar_x = float(width - 30)
-        scale_factor = 0.75  # tweak this value to align triangle and scale
-        scale_height = equilateral_height * scale_factor
-        bar_top = center.y() - scale_height
-        bar_bottom = center.y() + scale_height
-
-        tick_spacing_deg = 10
-        tick_length = 8
-        bar_color = QColor("#00FFFF")  # Match triangle blue
-        text_color = QColor("#FF4500")  # Red-orange for pitch value
-
-        # Compute marker position (match triangle nose)
-        clamped_pitch = max(min(self.pitch, self.max_angle), -self.max_angle)
-        normalized_pitch = clamped_pitch / self.max_angle
-        marker_y = center.y() + nose_y  # nose_y already includes proper pitch direction and scale
-
-
-        # === 1. Draw pitch value (left of bar, red)
-       # painter.setPen(QPen(text_color))
-       # painter.setFont(QFont("Courier New", 10))
-       # painter.drawText(QPointF(bar_x - 60, marker_y + 5), f"{self.pitch:+.1f}°")
-
-        # === 2. Draw pitch bar line
-        painter.setPen(QPen(bar_color, 2))
-        painter.drawLine(QPointF(bar_x, bar_top), QPointF(bar_x, bar_bottom))
-
-        # === 3. Draw red circle marker (on top of bar)
-    #    painter.setPen(Qt.NoPen)
-    #    painter.setBrush(QBrush(text_color))
-    #    painter.drawEllipse(QPointF(bar_x, marker_y), 5.0, 5.0)
-
-        # === 4. Draw ticks and graduation labels
-        painter.setPen(QPen(bar_color, 1))
-        painter.setFont(QFont("Courier New", 8))
-        for deg in range(-90, 91, tick_spacing_deg):
-            norm = deg / self.max_angle
-            y = center.y() - norm * scale_height
-
-
-            # Tick line
-            painter.drawLine(QPointF(bar_x - tick_length, y), QPointF(bar_x + tick_length, y))
-
-            # Label only every 30°
-            if deg % 30 == 0:
-                painter.drawText(QPointF(bar_x + 10, y + 4), f"{deg:+d}°") """
-
-
-
-
-
-
-
-
-
-
-
-
-

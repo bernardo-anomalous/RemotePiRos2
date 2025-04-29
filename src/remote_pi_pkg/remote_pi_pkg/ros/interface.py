@@ -71,6 +71,20 @@ class ROSInterface(Node):
         self.depth = 0.0  # New: Store the latest depth reading
         self.create_subscription(Float32, 'depth', self.depth_callback, 10)
         
+        # Acceleration processed data (for GUI Acceleration Dot)
+        self.current_acceleration = Vector3()
+        self.create_subscription(Vector3, 'acceleration/processed', self.acceleration_callback, 10)
+        
+    def acceleration_callback(self, msg: Vector3):
+        #print(f"[ROSInterface] Received accel: x={msg.x}, y={msg.y}, z={msg.z}")
+
+        self.current_acceleration = msg
+
+        if hasattr(self, 'attitude_widget'):
+            self.attitude_widget.set_acceleration(msg.x, msg.y, msg.z)
+
+
+        
     def depth_callback(self, msg):
         self.depth = msg.data  # Existing storage
 

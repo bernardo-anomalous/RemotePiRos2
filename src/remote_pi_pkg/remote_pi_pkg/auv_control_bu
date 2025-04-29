@@ -14,9 +14,7 @@ from lifecycle_msgs.msg import Transition
 from PyQt5.QtWidgets import QScrollArea, QSizePolicy, QWidget
 from PyQt5.QtGui import QTextOption
 import time
-
-
-
+from PyQt5.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QSizePolicy
 import os
 
 class AUVControlGUI(QWidget):
@@ -37,6 +35,12 @@ class AUVControlGUI(QWidget):
         script_dir = os.path.dirname(os.path.realpath(__file__))
         bg_path = "/home/b/RemotePiRos2/assets/background.png"
         self.setStyleSheet(f"""
+            /* === TRANSPARENCY FIX FOR QTextEdit === */
+            QTextEdit, QTextEdit QAbstractScrollArea, QTextEdit::viewport {{
+                background-color: transparent;
+            }}
+
+            /* === GLOBAL WIDGET STYLING === */
             QWidget {{
                 background-image: url("{bg_path}");
                 background-repeat: no-repeat;
@@ -47,27 +51,27 @@ class AUVControlGUI(QWidget):
                 font-family: "COURIER NEW", monospace;
                 font-size: 16px;
             }}
+
             QPushButton {{
                 background-color: rgba(34, 34, 34, 220);
                 border: 2px solid #00FFFF;
                 padding: 10px;
             }}
+
             QPushButton#deactivateButton,
             QPushButton#quitButton {{
                 border: 2px solid #FF4500;
                 color: #FF4500;
             }}
+
             QPushButton:hover {{
                 background-color: rgba(51, 51, 51, 220);
             }}
-            QTextEdit {{
-                background-color: rgba(34, 34, 34, 200);
-                border: 2px solid #00FFFF;
-                padding: 5px;
-            }}
+
             QTabWidget::pane {{
                 background: transparent;
             }}
+
             QTabBar::tab {{
                 height: 30px;
                 width: 260px;
@@ -77,14 +81,33 @@ class AUVControlGUI(QWidget):
                 border: 2px solid #00FFFF;
                 margin-right: 4px;
             }}
+
             QTabBar::tab:selected {{
                 background-color: rgba(51, 51, 51, 200);
                 border-bottom: 4px solid #FF4500;
             }}
+
+            QScrollBar:vertical {{
+                width: 30px;
+                background: rgba(34, 34, 34, 220);
+            }}
+
+            QScrollBar::handle:vertical {{
+                background: #00FF00;
+                min-height: 40px;
+            }}
+
+            QScrollBar::add-line:vertical, 
+            QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
         """)
+
 
         # === BUILD THE GUI ===
         self.init_ui()
+
+
 
         # === NOW SAFELY START THE TIMER ===
         self.status_update_timer = QTimer()
@@ -114,12 +137,8 @@ class AUVControlGUI(QWidget):
 
 
 
-
-
     def init_ui(self):
-        from PyQt5.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QSizePolicy
-
-        # Lifecycle Update Timer
+        # === Lifecycle Timer ===
         self.lifecycle_update_timer = QTimer()
         self.lifecycle_update_timer.timeout.connect(self.update_lifecycle_buttons)
         self.lifecycle_update_timer.start(1000)
@@ -131,8 +150,8 @@ class AUVControlGUI(QWidget):
         settings_tab = QWidget()
 
         operation_layout = QVBoxLayout()
-        main_layout = QHBoxLayout()
 
+        # === Transparent backgrounds for main tabs ===
         operation_tab.setAttribute(Qt.WA_StyledBackground, True)
         operation_tab.setStyleSheet("background: transparent;")
         settings_tab.setAttribute(Qt.WA_StyledBackground, True)
@@ -190,16 +209,14 @@ class AUVControlGUI(QWidget):
 
         self.heading_hud = HeadingBarWidget()
         self.heading_hud.setMaximumHeight(80)
-        #operation_layout.addWidget(QLabel("HEADING HUD"))
         operation_layout.addWidget(self.heading_hud, alignment=Qt.AlignTop)
 
         self.attitude_widget = AttitudeIndicator()
-        #operation_layout.addWidget(QLabel("ATTITUDE INDICATOR"))
         operation_layout.addWidget(self.attitude_widget)
 
         main_layout = QHBoxLayout()
 
-        # === LEFT COLUMN ===
+        # LEFT COLUMN
         left_layout = QVBoxLayout()
         self.btn_pid_toggle = QPushButton("ROLL PID: INACTIVE")
         self.btn_pid_toggle.setCheckable(True)
@@ -223,80 +240,100 @@ class AUVControlGUI(QWidget):
         left_layout.addWidget(self.btn_duration_increase)
         left_layout.addWidget(self.btn_duration_decrease)
         left_layout.addWidget(self.btn_toggle_sticky)
-
-        # CONTROL STATUS with SCROLL
-        self.control_status_field = ControlStatusField()
-        self.control_status_field.setReadOnly(True)
-        self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
-        self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
-
-        control_status_container = QWidget()
-        control_status_layout = QVBoxLayout(control_status_container)
-        control_status_layout.addWidget(QLabel("CONTROL STATUS"))
-        control_status_layout.addWidget(self.control_status_field)
-        control_status_layout.setContentsMargins(0, 0, 0, 0)
-
-        control_status_scroll = QScrollArea()
-        control_status_scroll.setWidgetResizable(True)
-        control_status_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        control_status_scroll.setWidget(control_status_container)
-
-        left_layout.addWidget(control_status_scroll)
         left_layout.addStretch(1)
         main_layout.addLayout(left_layout, 1)
 
-        # === RIGHT COLUMN ===
+        # RIGHT COLUMN
         right_layout = QVBoxLayout()
         self.virtual_joystick = VirtualJoystickWidget()
         self.virtual_joystick.callback = self.joystick_callback
 
-        #right_layout.addWidget(QLabel("VIRTUAL JOYSTICK"))
         right_layout.addWidget(self.virtual_joystick)
         right_layout.addStretch(1)
         main_layout.addLayout(right_layout, 1)
 
         operation_layout.addLayout(main_layout)
 
-        # === SYSTEM STATUS with SCROLL ===
+        # === BOTTOM STATUS TABS ===
+        status_tabs = QTabWidget()
+        status_tabs.setAttribute(Qt.WA_StyledBackground, True)
+        status_tabs.setStyleSheet("background: transparent;")
+
+        # CONTROL STATUS TAB
+        control_status_tab = QWidget()
+        control_status_tab.setAttribute(Qt.WA_StyledBackground, True)
+        control_status_tab.setStyleSheet("background: transparent;")
+        control_status_layout = QVBoxLayout(control_status_tab)
+        self.control_status_field = ControlStatusField()
+        self.control_status_field.setReadOnly(True)
+        self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
+        self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
+        control_status_layout.addWidget(self.control_status_field)
+        status_tabs.addTab(control_status_tab, "CONTROL STATUS")
+
+        # SYSTEM STATUS TAB
+        system_status_tab = QWidget()
+        system_status_tab.setAttribute(Qt.WA_StyledBackground, True)
+        system_status_tab.setStyleSheet("background: transparent;")
+        system_status_layout = QVBoxLayout(system_status_tab)
         self.status_display = QTextEdit()
         self.status_display.setReadOnly(True)
-        self.status_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-        system_status_container = QWidget()
-        system_status_layout = QVBoxLayout(system_status_container)
-        system_status_layout.addWidget(QLabel("SYSTEM STATUS"))
         system_status_layout.addWidget(self.status_display)
-        system_status_layout.setContentsMargins(0, 0, 0, 0)
-        system_status_layout.setSpacing(5)
+        status_tabs.addTab(system_status_tab, "SYSTEM STATUS")
+        
+        # === TRANSPARENCY FIX FOR QTextEdit FIELDS ===
+        self.control_status_field.setStyleSheet("background: transparent;")
+        self.control_status_field.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.control_status_field.viewport().setAutoFillBackground(False)
+        self.control_status_field.viewport().setStyleSheet("background: transparent;")
 
-        system_status_scroll = QScrollArea()
-        system_status_scroll.setWidgetResizable(True)
-        system_status_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        system_status_scroll.setWidget(system_status_container)
+        self.status_display.setStyleSheet("background: transparent;")
+        self.status_display.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.status_display.viewport().setAutoFillBackground(False)
+        self.status_display.viewport().setStyleSheet("background: transparent;")
 
-        operation_layout.addWidget(system_status_scroll)
+
+        # ===  THE FIX: TRANSPARENCY FOR STATUS FIELDS ===
+        self.control_status_field.setStyleSheet("""
+            border: 2px solid #00FFFF;
+            color: #00FF00;
+        """)
+        self.control_status_field.setAutoFillBackground(False)
+        self.control_status_field.viewport().setAutoFillBackground(False)
+        self.control_status_field.viewport().setStyleSheet("background-color: transparent;")
+
+        self.status_display.setStyleSheet("""
+            border: 2px solid #00FFFF;
+            color: #00FF00;
+        """)
+        self.status_display.setAutoFillBackground(False)
+        self.status_display.viewport().setAutoFillBackground(False)
+        self.status_display.viewport().setStyleSheet("background-color: transparent;")
+
+        # === Tab Styling ===
+        status_tabs.setStyleSheet("""
+            QTabBar::tab {
+                height: 40px;
+                width: 252px;
+                font-size: 18px;
+                background-color: rgba(34, 34, 34, 180);
+                border: 2px solid #00FFFF;
+                margin-right: 4px;
+            }
+            QTabBar::tab:selected {
+                background-color: rgba(51, 51, 51, 200);
+                border-bottom: 4px solid #FF4500;
+            }
+        """)
+
+        operation_layout.addWidget(status_tabs)
         operation_tab.setLayout(operation_layout)
 
-        # === Status Update Timer ===
+        # Status Update Timer
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
         self.status_update_timer.start(50)
         self.update_lifecycle_buttons()
-
-        # === Touch-Friendly Scrollbars ===
-        self.setStyleSheet("""
-            QScrollBar:vertical {
-                width: 30px;
-                background: rgba(34, 34, 34, 220);
-            }
-            QScrollBar::handle:vertical {
-                background: #00FF00;
-                min-height: 40px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-        """)
 
 
         
@@ -385,7 +422,20 @@ class AUVControlGUI(QWidget):
 
         servo_text = "N/A"
         if self.ros_node.current_servo_angles:
-            servo_text = "<br>".join(f"SERVO {i+1}: {angle:.1f}" for i, angle in enumerate(self.ros_node.current_servo_angles))
+            # Create a horizontal layout for displaying servo angles
+            servo_layout = QHBoxLayout()
+            for i, angle in enumerate(self.ros_node.current_servo_angles):
+                servo_label = QLabel(f"SERVO {i+1}: {angle:.1f}")
+                servo_label.setStyleSheet("color: #00FF00; font-size: 16px; margin-right: 10px;")  # Add style for spacing
+                servo_layout.addWidget(servo_label)
+
+            # Add the layout to the control status field
+            control_status_container = QWidget()
+            control_status_container.setLayout(servo_layout)
+            self.control_status_field.setText("")  # Clear text from QTextEdit since we're using widgets
+
+            # Insert the horizontal layout directly into the control status area
+            control_status_layout.addWidget(control_status_container)
 
         control_status = (
             f"PITCH COMMAND: {colorize(pitch_cmd)}<br>"

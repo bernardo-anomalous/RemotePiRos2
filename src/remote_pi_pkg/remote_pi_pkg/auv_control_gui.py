@@ -213,6 +213,7 @@ class AUVControlGUI(QWidget):
 
         self.attitude_widget = AttitudeIndicator()
         operation_layout.addWidget(self.attitude_widget)
+        self.ros_node.attitude_widget = self.attitude_widget
 
         main_layout = QHBoxLayout()
 
@@ -422,7 +423,20 @@ class AUVControlGUI(QWidget):
 
         servo_text = "N/A"
         if self.ros_node.current_servo_angles:
-            servo_text = "<br>".join(f"SERVO {i+1}: {angle:.1f}" for i, angle in enumerate(self.ros_node.current_servo_angles))
+            # Create a horizontal layout for displaying servo angles
+            servo_layout = QHBoxLayout()
+            for i, angle in enumerate(self.ros_node.current_servo_angles):
+                servo_label = QLabel(f"SERVO {i+1}: {angle:.1f}")
+                servo_label.setStyleSheet("color: #00FF00; font-size: 16px; margin-right: 10px;")  # Add style for spacing
+                servo_layout.addWidget(servo_label)
+
+            # Add the layout to the control status field
+            control_status_container = QWidget()
+            control_status_container.setLayout(servo_layout)
+            self.control_status_field.setText("")  # Clear text from QTextEdit since we're using widgets
+
+            # Insert the horizontal layout directly into the control status area
+            control_status_layout.addWidget(control_status_container)
 
         control_status = (
             f"PITCH COMMAND: {colorize(pitch_cmd)}<br>"
