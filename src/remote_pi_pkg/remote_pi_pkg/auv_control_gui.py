@@ -264,12 +264,12 @@ class AUVControlGUI(QWidget):
         control_status_tab = QWidget()
         control_status_tab.setAttribute(Qt.WA_StyledBackground, True)
         control_status_tab.setStyleSheet("background: transparent;")
-        control_status_layout = QVBoxLayout(control_status_tab)
+        self.control_status_layout = QVBoxLayout(control_status_tab)
         self.control_status_field = ControlStatusField()
         self.control_status_field.setReadOnly(True)
         self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
         self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
-        control_status_layout.addWidget(self.control_status_field)
+        self.control_status_layout.addWidget(self.control_status_field)
         status_tabs.addTab(control_status_tab, "CONTROL STATUS")
 
         # SYSTEM STATUS TAB
@@ -421,22 +421,14 @@ class AUVControlGUI(QWidget):
             except Exception:
                 current_roll, current_pitch = "N/A", "N/A"
 
-        servo_text = "N/A"
+        servo_text = ""
         if self.ros_node.current_servo_angles:
-            # Create a horizontal layout for displaying servo angles
-            servo_layout = QHBoxLayout()
-            for i, angle in enumerate(self.ros_node.current_servo_angles):
-                servo_label = QLabel(f"SERVO {i+1}: {angle:.1f}")
-                servo_label.setStyleSheet("color: #00FF00; font-size: 16px; margin-right: 10px;")  # Add style for spacing
-                servo_layout.addWidget(servo_label)
+            servo_text = "|".join(
+                [f"<b>S{i+1}:</b> {angle:.1f}°" for i, angle in enumerate(self.ros_node.current_servo_angles)]
+            )
+        else:
+            servo_text = "N/A"
 
-            # Add the layout to the control status field
-            control_status_container = QWidget()
-            control_status_container.setLayout(servo_layout)
-            self.control_status_field.setText("")  # Clear text from QTextEdit since we're using widgets
-
-            # Insert the horizontal layout directly into the control status area
-            control_status_layout.addWidget(control_status_container)
 
         control_status = (
             f"PITCH COMMAND: {colorize(pitch_cmd)}<br>"
