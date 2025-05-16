@@ -147,15 +147,15 @@ class ROSInterface(Node):
         adjusted_durations = [d * self.canned_duration_factor for d in base_durations]
         canned_commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [60.0, 110.0, 60.0, 50.0,
-                            0.0, 110.0, 120.0, 50.0,
-                            0.0, 90.0, 120.0, 90.0,
-                            0.0, 30.0, 120.0, 130.0,
-                            120.0, 30.0, 0.0, 130.0,
-                            120.0, 90.0, 0.0, 90.0,
-                            120.0, 110.0, 0.0, 50.0,
-                            60.0, 110.0, 60.0, 50.0,
-                            60.0, 90.0, 60.0, 90.0],
+            'target_angles': [90.0, 140.0, 90.0, 40.0,#pitch up before up swing
+                            0.0, 140.0, 180.0, 40.0,#swing up
+                            0.0, 90.0, 180.0, 90.0,#up plus glidee
+                            0.0, 40.0, 180.0, 140.0,#pitch down
+                            180.0, 40.0, 0.0, 140.0,#swing down
+                            180.0, 90.0, 0.0, 90.0,#down plus glide
+                            180.0, 140.0, 0.0, 40.0,#pitch up
+                            90.0, 140.0, 90.0, 40.0,#wing to glide
+                            90.0, 90.0, 90.0, 90.0],#glide
             'durations': adjusted_durations,
             'easing_algorithms': ['EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
                                 'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'],
