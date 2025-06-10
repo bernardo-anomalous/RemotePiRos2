@@ -20,6 +20,27 @@ class ROSInterface(Node):
         self.canned_duration_factor = 1.0
         self.DURATION_STEP = 0.2  # Adjustable increment
 
+        # Predefined servo positions for the canned wing cycle
+        self.canned_servo_numbers = [0, 1, 2, 3]
+        self.canned_target_angles = [
+            [90.0, 140.0, 90.0, 40.0],  # pitch up before swing
+            [0.0, 140.0, 180.0, 40.0],  # swing up
+            [0.0, 90.0, 180.0, 90.0],   # up + glide
+            [0.0, 40.0, 180.0, 140.0],  # pitch down
+            [180.0, 40.0, 0.0, 140.0],  # swing down
+            [180.0, 90.0, 0.0, 90.0],   # down + glide
+            [180.0, 140.0, 0.0, 40.0],  # pitch up
+            [90.0, 140.0, 90.0, 40.0],  # wing to glide
+            [90.0, 90.0, 90.0, 90.0],   # glide
+        ]
+        self.canned_default_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
+        self.canned_easing_algorithms = [
+            'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
+            'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'
+        ]
+        self.canned_easing_in = [0.0] * 9
+        self.canned_easing_out = [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1]
+
         # Sensor readouts
         self.current_servo_angles = []  # List of 6 servo angles
         self.imu_reading = None         # sensor_msgs/Imu
@@ -142,25 +163,17 @@ class ROSInterface(Node):
         self.roll_pid_enabled = False
         self.pid_reattach_pending = True  # Tell the system to re-enable later
 
-        # Step 2: Build the canned command (your existing command logic preserved)
-        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted_durations = [d * self.canned_duration_factor for d in base_durations]
+        # Step 2: Build the canned command from predefined step data
+        adjusted_durations = [d * self.canned_duration_factor
+                              for d in self.canned_default_durations]
+        all_angles = [angle for step in self.canned_target_angles for angle in step]
         canned_commands = {
-            'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,#pitch up before up swing
-                            0.0, 140.0, 180.0, 40.0,#swing up
-                            0.0, 90.0, 180.0, 90.0,#up plus glidee
-                            0.0, 40.0, 180.0, 140.0,#pitch down
-                            180.0, 40.0, 0.0, 140.0,#swing down
-                            180.0, 90.0, 0.0, 90.0,#down plus glide
-                            180.0, 140.0, 0.0, 40.0,#pitch up
-                            90.0, 140.0, 90.0, 40.0,#wing to glide
-                            90.0, 90.0, 90.0, 90.0],#glide
+            'servo_numbers': self.canned_servo_numbers,
+            'target_angles': all_angles,
             'durations': adjusted_durations,
-            'easing_algorithms': ['EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
-                                'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'],
-            'easing_in_factors': [0.0] * 9,
-            'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
+            'easing_algorithms': self.canned_easing_algorithms,
+            'easing_in_factors': self.canned_easing_in,
+            'easing_out_factors': self.canned_easing_out,
             'movement_type': 'THRUST_UNIT',
             'deadline': (self.get_clock().now() + rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -184,6 +197,34 @@ class ROSInterface(Node):
         self.canned_pub.publish(msg)
         self.last_command = f"CANNED MOVEMENT PUBLISHED @ {self.get_clock().now().to_msg()}"
         #self.get_logger().info("[ROSInterface] Canned movement command sent.")
+
+    def publish_canned_step(self, step_index: int, duration: float):
+        """Publish a single step of the canned movement."""
+        if step_index < 0 or step_index >= len(self.canned_target_angles):
+            self.get_logger().error("Invalid canned step index")
+            return
+
+        self.set_pid(False)
+        self.roll_pid_enabled = False
+        self.pid_reattach_pending = True
+
+        msg = ServoMovementCommand()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.servo_numbers = self.canned_servo_numbers
+        msg.target_angles = self.canned_target_angles[step_index]
+        msg.durations = [float(duration)]
+        msg.easing_algorithms = [self.canned_easing_algorithms[step_index]]
+        msg.easing_in_factors = [self.canned_easing_in[step_index]]
+        msg.easing_out_factors = [self.canned_easing_out[step_index]]
+        msg.movement_type = 'THRUST_UNIT'
+        msg.deadline = (self.get_clock().now() + rclpy.duration.Duration(seconds=5)).to_msg()
+        msg.operational_mode = 'ENERGY_EFFICIENT'
+        msg.priority = 0
+
+        self.canned_pub.publish(msg)
+        self.last_command = (
+            f"CANNED STEP {step_index} PUBLISHED @ {self.get_clock().now().to_msg()}"
+        )
 
 
     def set_pid(self, activate: bool):
