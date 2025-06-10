@@ -38,8 +38,7 @@ class AttitudeIndicator(QWidget):
 
     def set_acceleration(self, accel_x, accel_y, accel_z):
         """Called by ROSInterface to update acceleration vector."""
-        print(f"[SET_ACCELERATION] Target set to: x={self.target_accel_x}, y={self.target_accel_y}")
-        print(f"[SET_ACCELERATION] Raw incoming: x={accel_x}, y={accel_y}, z={accel_z}")
+        # print statements removed to avoid console spam
 
         try:
             self.target_accel_x = float(accel_y) * self.visual_gain      # Swap X and Y
@@ -47,7 +46,8 @@ class AttitudeIndicator(QWidget):
 
             self.update()  # Important: triggers repaint
         except Exception as e:
-            print(f"[AttitudeIndicator] set_acceleration error: {e}")
+            # log the error if needed; suppress direct printing
+            pass
 
 
 
