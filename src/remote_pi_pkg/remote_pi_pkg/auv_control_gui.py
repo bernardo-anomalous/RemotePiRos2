@@ -74,7 +74,7 @@ class AUVControlGUI(QWidget):
 
             QTabBar::tab {{
                 height: 30px;
-                width: 260px;
+                width: 180px;
                 padding: 10px;
                 font-size: 18px;
                 background-color: rgba(34, 34, 34, 180);
@@ -202,11 +202,33 @@ class AUVControlGUI(QWidget):
 
         # === MANUAL INPUT TAB ===
         manual_layout = QVBoxLayout()
-        manual_layout.addWidget(QLabel("STEP DURATION"))
+
+        # --- Step Duration Controls ---
+        duration_row = QHBoxLayout()
+        duration_row.addWidget(QLabel("STEP DURATION"))
+
         self.manual_duration_spin = QDoubleSpinBox()
         self.manual_duration_spin.setRange(0.1, 10.0)
         self.manual_duration_spin.setSingleStep(0.1)
         self.manual_duration_spin.setValue(1.0)
+        self.manual_duration_spin.hide()  # Hide the small spin box arrows
+
+        self.manual_duration_label = QLabel(f"{self.manual_duration_spin.value():.1f}s")
+        self.manual_duration_label.setAlignment(Qt.AlignCenter)
+        self.manual_duration_label.setStyleSheet("font-size: 24px;")
+
+        self.btn_step_duration_decrease = QPushButton("-")
+        self.btn_step_duration_increase = QPushButton("+")
+
+        self.btn_step_duration_decrease.clicked.connect(self.manual_duration_spin.stepDown)
+        self.btn_step_duration_increase.clicked.connect(self.manual_duration_spin.stepUp)
+        self.manual_duration_spin.valueChanged.connect(self.update_manual_duration_label)
+
+        duration_row.addWidget(self.btn_step_duration_decrease)
+        duration_row.addWidget(self.manual_duration_label)
+        duration_row.addWidget(self.btn_step_duration_increase)
+
+        manual_layout.addLayout(duration_row)
         manual_layout.addWidget(self.manual_duration_spin)
 
         step_names = [
@@ -217,6 +239,8 @@ class AUVControlGUI(QWidget):
         self.manual_step_buttons = []
         for idx, name in enumerate(step_names):
             btn = QPushButton(name.upper())
+            btn.setFixedHeight(50)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.clicked.connect(lambda _, i=idx: self.send_canned_step(i))
             manual_layout.addWidget(btn)
             self.manual_step_buttons.append(btn)
@@ -404,6 +428,9 @@ class AUVControlGUI(QWidget):
     def send_canned_step(self, step_index):
         duration = self.manual_duration_spin.value()
         self.ros_node.publish_canned_step(step_index, duration)
+
+    def update_manual_duration_label(self):
+        self.manual_duration_label.setText(f"{self.manual_duration_spin.value():.1f}s")
 
     def joystick_callback(self, norm_x, norm_y):
         max_angle = 15.0  # or change to 45.0 for tighter control
