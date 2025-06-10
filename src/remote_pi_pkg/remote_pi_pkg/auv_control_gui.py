@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QTextEdit, QLabel, QTabWidget
+    QPushButton, QTextEdit, QLabel, QTabWidget, QDoubleSpinBox
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -148,6 +148,7 @@ class AUVControlGUI(QWidget):
 
         operation_tab = QWidget()
         settings_tab = QWidget()
+        manual_tab = QWidget()
 
         operation_layout = QVBoxLayout()
 
@@ -156,8 +157,11 @@ class AUVControlGUI(QWidget):
         operation_tab.setStyleSheet("background: transparent;")
         settings_tab.setAttribute(Qt.WA_StyledBackground, True)
         settings_tab.setStyleSheet("background: transparent;")
+        manual_tab.setAttribute(Qt.WA_StyledBackground, True)
+        manual_tab.setStyleSheet("background: transparent;")
 
         tabs.addTab(operation_tab, "OPERATION")
+        tabs.addTab(manual_tab, "MANUAL INPUT")
         tabs.addTab(settings_tab, "SETTINGS")
         outer_layout.addWidget(tabs)
         self.setLayout(outer_layout)
@@ -195,6 +199,30 @@ class AUVControlGUI(QWidget):
         settings_layout.addStretch(1)
         settings_layout.addWidget(self.btn_quit)
         settings_tab.setLayout(settings_layout)
+
+        # === MANUAL INPUT TAB ===
+        manual_layout = QVBoxLayout()
+        manual_layout.addWidget(QLabel("STEP DURATION"))
+        self.manual_duration_spin = QDoubleSpinBox()
+        self.manual_duration_spin.setRange(0.1, 10.0)
+        self.manual_duration_spin.setSingleStep(0.1)
+        self.manual_duration_spin.setValue(1.0)
+        manual_layout.addWidget(self.manual_duration_spin)
+
+        step_names = [
+            "Pitch Up", "Swing Up", "Up + Glide", "Pitch Down",
+            "Swing Down", "Down + Glide", "Pitch Up 2",
+            "Wing to Glide", "Glide"
+        ]
+        self.manual_step_buttons = []
+        for idx, name in enumerate(step_names):
+            btn = QPushButton(name.upper())
+            btn.clicked.connect(lambda _, i=idx: self.send_canned_step(i))
+            manual_layout.addWidget(btn)
+            self.manual_step_buttons.append(btn)
+
+        manual_layout.addStretch(1)
+        manual_tab.setLayout(manual_layout)
 
         # === OPERATION TAB ===
         top_status_row = QHBoxLayout()
@@ -372,6 +400,10 @@ class AUVControlGUI(QWidget):
         new_factor = self.ros_node.canned_duration_factor - self.ros_node.DURATION_STEP
         self.ros_node.canned_duration_factor = max(0.1, new_factor)
         #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
+
+    def send_canned_step(self, step_index):
+        duration = self.manual_duration_spin.value()
+        self.ros_node.publish_canned_step(step_index, duration)
 
     def joystick_callback(self, norm_x, norm_y):
         max_angle = 15.0  # or change to 45.0 for tighter control
