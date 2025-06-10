@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QTextEdit, QLabel, QTabWidget, QDoubleSpinBox
+    QPushButton, QTextEdit, QLabel, QTabWidget, QDoubleSpinBox,
+    QScrollArea, QSizePolicy
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -11,10 +12,8 @@ from remote_pi_pkg.widgets.heading_bar import HeadingBarWidget
 from remote_pi_pkg.widgets.attitude_indicator import AttitudeIndicator
 from remote_pi_pkg.widgets.control_status_field import ControlStatusField
 from lifecycle_msgs.msg import Transition
-from PyQt5.QtWidgets import QScrollArea, QSizePolicy, QWidget
 from PyQt5.QtGui import QTextOption
 import time
-from PyQt5.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QSizePolicy
 import os
 
 class AUVControlGUI(QWidget):
