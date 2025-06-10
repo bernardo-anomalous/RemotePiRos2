@@ -138,7 +138,7 @@ class ROSInterface(Node):
         
         self.imu_health_status = msg.data
         self.get_logger().info(f"[ROSInterface] IMU Health Status: {self.imu_health_status}")
-        print(f"IMU HEALTH CALLBACK FIRED: {msg.data}")
+        self.get_logger().debug(f"IMU HEALTH CALLBACK FIRED: {msg.data}")
         
 
 
