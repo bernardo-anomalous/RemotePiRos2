@@ -558,51 +558,43 @@ class AUVControlGUI(QWidget):
     def update_lifecycle_buttons(self):
         current_state = self.ros_node.current_lifecycle_state
 
+        # List of all managed buttons
+        all_buttons = [
+            self.btn_configure,
+            self.btn_activate,
+            self.btn_deactivate,
+            self.btn_cleanup,
+            self.btn_shutdown,
+            self.btn_error_recovery,
+        ]
 
-        # Avoid NoneType errors:
+        # If no node is available, disable everything
         if not current_state or current_state == "unavailable":
-            # Gray out ALL buttons if no node detected
-            for btn in [
-                self.btn_configure, self.btn_activate, self.btn_deactivate,
-                self.btn_cleanup, self.btn_shutdown, self.btn_error_recovery
-            ]:
+            for btn in all_buttons:
                 btn.setEnabled(False)
                 btn.setStyleSheet("border: 2px solid #555555; color: #555555;")
             self.label_current_state.setText("CURRENT STATE: NODE OFFLINE")
-            return  # Exit early!
+            return
 
-        # Example transition mapping
-        transitions = [
-            {'id': Transition.TRANSITION_CONFIGURE, 'start': 'unconfigured', 'label': 'CONFIGURE DRIVER'},
-            {'id': Transition.TRANSITION_ACTIVATE, 'start': 'inactive', 'label': 'ACTIVATE DRIVER'},
-            {'id': Transition.TRANSITION_DEACTIVATE, 'start': 'active', 'label': 'DEACTIVATE DRIVER'},
-            {'id': Transition.TRANSITION_CLEANUP, 'start': 'inactive', 'label': 'CLEANUP DRIVER'},
-            {'id': Transition.TRANSITION_UNCONFIGURED_SHUTDOWN, 'start': 'unconfigured', 'label': 'SHUTDOWN (UNCONFIGURED)'},
-            {'id': Transition.TRANSITION_INACTIVE_SHUTDOWN, 'start': 'inactive', 'label': 'SHUTDOWN (INACTIVE)'},
-            {'id': Transition.TRANSITION_ACTIVE_SHUTDOWN, 'start': 'active', 'label': 'SHUTDOWN (ACTIVE)'},
-            {'id': Transition.TRANSITION_DESTROY, 'start': 'errorprocessing', 'label': 'ERROR RECOVERY'}
-        ]
+        # Mapping of lifecycle states to buttons that should be enabled
+        state_map = {
+            "unconfigured": [self.btn_configure, self.btn_shutdown],
+            "inactive": [self.btn_activate, self.btn_cleanup, self.btn_shutdown],
+            "active": [self.btn_deactivate, self.btn_shutdown],
+            "errorprocessing": [self.btn_error_recovery],
+        }
 
+        # Disable all by default
+        for btn in all_buttons:
+            btn.setEnabled(False)
+            btn.setStyleSheet("border: 2px solid #555555; color: #555555;")
 
-        # Update button appearance based on state
-        for transition in transitions:
-            btn = None
-            if transition['id'] == 1:
-                btn = self.btn_configure
-            elif transition['id'] == 3:
-                btn = self.btn_activate
-            elif transition['id'] == 4:
-                btn = self.btn_deactivate
-            elif transition['id'] == 5:
-                btn = self.btn_cleanup
+        # Enable only the allowed buttons for the current state
+        for btn in state_map.get(current_state.lower(), []):
+            btn.setEnabled(True)
+            btn.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
 
-            if btn:
-                if current_state and transition['start'].lower() == current_state.lower():
-                    btn.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
-                    btn.setEnabled(True)
-                else:
-                    btn.setStyleSheet("border: 2px solid #555555; color: #555555;")
-                    btn.setEnabled(False)
+        self.label_current_state.setText(f"CURRENT STATE: {current_state.upper()}")
 
     def handle_lifecycle_button(self, transition_id):
         # Disable buttons temporarily to avoid multiple presses
