@@ -429,6 +429,11 @@ class AUVControlGUI(QWidget):
         else:
             servo_text = "N/A"
 
+        factor = self.ros_node.canned_duration_factor
+        if factor < 1.0:
+            factor_str = f'<font color="#FF4500">{factor:.2f}</font>'
+        else:
+            factor_str = f'{factor:.2f}'
 
         control_status = (
             f"PITCH COMMAND: {colorize(pitch_cmd)}<br>"
@@ -436,7 +441,7 @@ class AUVControlGUI(QWidget):
             f"CURRENT PITCH: {colorize(current_pitch)}<br>"
             f"CURRENT ROLL: {colorize(current_roll)}<br>"
             f"SERVO ANGLES:<br>{servo_text}<br>"
-            f"CANNED DURATION FACTOR: {'<font color=\"#FF4500\">'+f'{self.ros_node.canned_duration_factor:.2f}'+'</font>' if self.ros_node.canned_duration_factor < 1.0 else f'{self.ros_node.canned_duration_factor:.2f}'}<br>"
+            f"CANNED DURATION FACTOR: {factor_str}<br>"
             f"LAST COMMAND SENT: {self.ros_node.last_command}"
         )
 
