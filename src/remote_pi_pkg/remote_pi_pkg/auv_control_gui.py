@@ -112,7 +112,7 @@ class AUVControlGUI(QWidget):
         # === NOW SAFELY START THE TIMER ===
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
-        self.status_update_timer.start(50)
+        self.status_update_timer.start(500)
         # Visual update timer (runs at 60Hz)
         self.visual_update_timer = QTimer()
         self.visual_update_timer.timeout.connect(self.update_visuals)
@@ -382,10 +382,6 @@ class AUVControlGUI(QWidget):
         operation_layout.addWidget(status_tabs)
         operation_tab.setLayout(operation_layout)
 
-        # Status Update Timer
-        self.status_update_timer = QTimer()
-        self.status_update_timer.timeout.connect(self.update_status)
-        self.status_update_timer.start(50)
         self.update_lifecycle_buttons()
 
 
@@ -452,13 +448,6 @@ class AUVControlGUI(QWidget):
         self.ros_node.publish_roll()
 
     def update_status(self):
-        now = time.time()
-        if not hasattr(self, 'last_gui_update'):
-            self.last_gui_update = now
-        if now - self.last_gui_update < 0.5:  # Only update every 500ms
-            return  # Skip the update if too soon
-        self.last_gui_update = now
-
         def colorize(value):
             if isinstance(value, float) and value < 0:
                 return f'<font color="#FF4500">{value:.1f}</font>'
