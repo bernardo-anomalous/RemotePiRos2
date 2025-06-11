@@ -571,18 +571,20 @@ class AUVControlGUI(QWidget):
         
         # === Update IMU Health Label ===
         imu_health = self.ros_node.imu_health_status
+        normalized = imu_health.upper()
 
-        if imu_health == "IMU OK":
+        if normalized == "IMU OK":
             self.imu_health_label.setText("IMU HEALTH: OK")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #00FF00;")
-        elif "UNSTABLE" in imu_health:
+        elif "UNSTABLE" in normalized:
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Orange
-        elif "RESTARTING" in imu_health:
+        elif "RESTARTING" in normalized:
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red
         else:
-            self.imu_health_label.setText("IMU HEALTH: UNKNOWN")
+            # Display unrecognised status text directly
+            self.imu_health_label.setText(f"IMU HEALTH: {imu_health or 'UNKNOWN'}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
             
         servo_status = self.ros_node.servo_driver_status

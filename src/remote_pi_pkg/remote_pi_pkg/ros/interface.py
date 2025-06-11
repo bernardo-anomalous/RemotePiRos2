@@ -151,10 +151,14 @@ class ROSInterface(Node):
 
         
     def imu_health_callback(self, msg):
-        
-        self.imu_health_status = msg.data
-        self.get_logger().info(f"[ROSInterface] IMU Health Status: {self.imu_health_status}")
-        self.get_logger().debug(f"IMU HEALTH CALLBACK FIRED: {msg.data}")
+        """Store IMU health status from the '/imu/health_status' topic."""
+
+        # Normalize whitespace for consistent GUI display
+        self.imu_health_status = msg.data.strip()
+        self.get_logger().info(
+            f"[ROSInterface] IMU Health Status: {self.imu_health_status}")
+        self.get_logger().debug(
+            f"IMU HEALTH CALLBACK FIRED: {self.imu_health_status}")
         
 
 
