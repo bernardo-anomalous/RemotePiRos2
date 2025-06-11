@@ -82,9 +82,12 @@ class ROSInterface(Node):
         self.lifecycle_future_transition_id = None
         self.create_timer(0.1, self.check_lifecycle_future)  # Check every 100ms
         self.get_state_future = None
-        self.current_lifecycle_state = None
+        self.current_lifecycle_state = 'unknown'
+        self.create_subscription(String,
+                                 'servo_driver/lifecycle_state',
+                                 self.lifecycle_state_callback, 10)
         self.create_timer(0.1, self.check_get_state_future)  # Check every 100 ms
-        self.lifecycle_state_poll_timer = self.create_timer(1.0, self.poll_lifecycle_state)  # Every 1 second
+        self.lifecycle_state_poll_timer = self.create_timer(10.0, self.poll_lifecycle_state)  # Fallback poll
         
         self.servo_driver_status = "UNKNOWN"  # Default state until data arrives
         self.create_subscription(String, 'servo_driver_status', self.servo_status_callback, 10)
@@ -131,6 +134,19 @@ class ROSInterface(Node):
                 self.set_pid(True)
                 self.roll_pid_enabled = True
                 self.pid_reattach_pending = False
+
+    def lifecycle_state_callback(self, msg: String):
+        new_state = msg.data.strip().lower()
+        if new_state != self.current_lifecycle_state:
+            self.current_lifecycle_state = new_state
+            self.get_logger().info(
+                f"[ROSInterface] Lifecycle state updated: {new_state}")
+            if hasattr(self, 'lifecycle_update_callback'):
+                try:
+                    self.lifecycle_update_callback()
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Lifecycle GUI callback failed: {e}")
 
 
         
