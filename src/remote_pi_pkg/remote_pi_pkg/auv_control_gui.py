@@ -106,6 +106,9 @@ class AUVControlGUI(QWidget):
         # === BUILD THE GUI ===
         self.init_ui()
 
+        # Allow ROS node to trigger UI updates when lifecycle state changes
+        self.ros_node.lifecycle_update_callback = self.update_lifecycle_buttons
+
 
 
         # === NOW SAFELY START THE TIMER ===
