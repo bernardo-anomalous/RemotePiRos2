@@ -235,9 +235,10 @@ class AUVControlGUI(QWidget):
 
         # Build manual step buttons dynamically from available canned movements
         self.manual_step_buttons = []
-        method_names = [
-            m for m in dir(self.ros_node.canned_movements) if m.startswith('canned_')
-        ]
+        method_names = sorted(
+            [m for m in dir(self.ros_node.canned_movements) if m.startswith('canned_')],
+            key=lambda n: int(n.split('_')[1])
+        )
         for name in method_names:
             label = name[len('canned_'):].replace('_', ' ').upper()
             btn = QPushButton(label)
