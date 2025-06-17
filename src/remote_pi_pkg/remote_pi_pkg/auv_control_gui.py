@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (
     QScrollArea, QSizePolicy
 )
 from PyQt5.QtCore import Qt, QTimer
+import re
 from PyQt5.QtGui import QFont
 
 from remote_pi_pkg.ros.interface import ROSInterface
@@ -235,12 +236,16 @@ class AUVControlGUI(QWidget):
 
         # Build manual step buttons dynamically from available canned movements
         self.manual_step_buttons = []
-        method_names = sorted(
-            [m for m in dir(self.ros_node.canned_movements) if m.startswith('canned_')],
-            key=lambda n: int(n.split('_')[1])
-        )
+        canned_re = re.compile(r'^canned_(\d+)(?:_(.*))?$')
+        method_names = [m for m in dir(self.ros_node.canned_movements) if canned_re.match(m)]
+        method_names.sort(key=lambda n: int(canned_re.match(n).group(1)))
         for name in method_names:
-            label = name[len('canned_'):].replace('_', ' ').upper()
+            match = canned_re.match(name)
+            suffix = match.group(2)
+            if suffix:
+                label = suffix.replace('_', ' ').upper()
+            else:
+                label = match.group(1)
             btn = QPushButton(label)
             btn.setFixedHeight(50)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

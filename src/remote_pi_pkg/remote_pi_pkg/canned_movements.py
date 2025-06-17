@@ -34,7 +34,7 @@ class CannedMovements:
             f"CANNED MOVEMENT PUBLISHED @ {self.ros.get_clock().now().to_msg()}"
         )
 
-    def canned_1(self, duration_scale: float = 1.0):
+    def canned_1_turn_left(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -66,7 +66,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_2(self, duration_scale: float = 1.0):
+    def canned_2_turn_right(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -98,7 +98,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_3(self, duration_scale: float = 1.0):
+    def canned_3_pitch_up(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -130,7 +130,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_4(self, duration_scale: float = 1.0):
+    def canned_4_pitch_down(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -162,7 +162,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_5(self, duration_scale: float = 1.0):
+    def canned_5_roll_left(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -194,7 +194,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_6(self, duration_scale: float = 1.0):
+    def canned_6_roll_right(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -226,7 +226,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_7(self, duration_scale: float = 1.0):
+    def canned_7_dive(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -258,7 +258,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_8(self, duration_scale: float = 1.0):
+    def canned_8_surface(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -290,7 +290,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_9(self, duration_scale: float = 1.0):
+    def canned_9_forward(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -322,7 +322,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_10(self, duration_scale: float = 1.0):
+    def canned_10_reverse(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
