@@ -244,7 +244,9 @@ class AUVControlGUI(QWidget):
             btn.setFixedHeight(50)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             method = getattr(self.ros_node.canned_movements, name)
-            btn.clicked.connect(lambda _, m=method: m(self.manual_duration_spin.value()))
+            btn.clicked.connect(
+                lambda _, m=method: m(duration_scale=self.manual_duration_spin.value())
+            )
             manual_layout.addWidget(btn)
             self.manual_step_buttons.append(btn)
 

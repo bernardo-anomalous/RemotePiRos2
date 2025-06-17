@@ -34,9 +34,12 @@ class CannedMovements:
             f"CANNED MOVEMENT PUBLISHED @ {self.ros.get_clock().now().to_msg()}"
         )
 
-    def canned_1(self):
+    def canned_1(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -63,9 +66,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_2(self):
+    def canned_2(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -92,9 +98,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_3(self):
+    def canned_3(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -121,9 +130,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_4(self):
+    def canned_4(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -150,9 +162,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_5(self):
+    def canned_5(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -179,9 +194,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_6(self):
+    def canned_6(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -208,9 +226,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_7(self):
+    def canned_7(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -237,9 +258,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_8(self):
+    def canned_8(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -266,9 +290,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_9(self):
+    def canned_9(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
@@ -295,9 +322,12 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_10(self):
+    def canned_10(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
-        adjusted = [d * self.ros.canned_duration_factor for d in base_durations]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
             'target_angles': [90.0, 140.0, 90.0, 40.0,
