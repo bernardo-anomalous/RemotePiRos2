@@ -1,3 +1,4 @@
+
 """Predefined movement sequences for the AUV."""
 
 from auv_custom_interfaces.msg import ServoMovementCommand

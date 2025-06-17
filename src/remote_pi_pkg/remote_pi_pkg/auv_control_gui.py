@@ -233,17 +233,18 @@ class AUVControlGUI(QWidget):
         manual_layout.addLayout(duration_row)
         manual_layout.addWidget(self.manual_duration_spin)
 
-        step_names = [
-            "Pitch Up", "Swing Up", "Up + Glide", "Pitch Down",
-            "Swing Down", "Down + Glide", "Pitch Up 2",
-            "Wing to Glide", "Glide"
-        ]
+        # Build manual step buttons dynamically from available canned movements
         self.manual_step_buttons = []
-        for idx, name in enumerate(step_names):
-            btn = QPushButton(name.upper())
+        method_names = [
+            m for m in dir(self.ros_node.canned_movements) if m.startswith('canned_')
+        ]
+        for name in method_names:
+            label = name[len('canned_'):].replace('_', ' ').upper()
+            btn = QPushButton(label)
             btn.setFixedHeight(50)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            btn.clicked.connect(lambda _, i=idx: self.send_canned_step(i))
+            method = getattr(self.ros_node.canned_movements, name)
+            btn.clicked.connect(lambda _, m=method: m(self.manual_duration_spin.value()))
             manual_layout.addWidget(btn)
             self.manual_step_buttons.append(btn)
 
@@ -423,9 +424,6 @@ class AUVControlGUI(QWidget):
         self.ros_node.canned_duration_factor = max(0.1, new_factor)
         #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
-    def send_canned_step(self, step_index):
-        duration = self.manual_duration_spin.value()
-        self.ros_node.publish_canned_step(step_index, duration)
 
     def update_manual_duration_label(self):
         self.manual_duration_label.setText(f"{self.manual_duration_spin.value():.1f}s")

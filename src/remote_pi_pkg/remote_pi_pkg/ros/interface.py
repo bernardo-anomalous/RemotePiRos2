@@ -7,7 +7,8 @@ from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.msg import Transition
 from geometry_msgs.msg import Vector3  
 from std_msgs.msg import String   
-from lifecycle_msgs.srv import GetState     
+from lifecycle_msgs.srv import GetState
+from remote_pi_pkg import CannedMovements
 
 
 
@@ -40,6 +41,9 @@ class ROSInterface(Node):
         ]
         self.canned_easing_in = [0.0] * 9
         self.canned_easing_out = [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1]
+
+        # Helper for sending individual canned steps
+        self.canned_movements = CannedMovements(self)
 
         # Sensor readouts
         self.current_servo_angles = []  # List of 6 servo angles
