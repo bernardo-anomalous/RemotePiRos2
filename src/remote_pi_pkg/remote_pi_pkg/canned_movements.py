@@ -34,7 +34,7 @@ class CannedMovements:
             f"CANNED MOVEMENT PUBLISHED @ {self.ros.get_clock().now().to_msg()}"
         )
 
-    def canned_1_turn_left(self, duration_scale: float = 1.0):
+    def canned_1_low_thrust(self, duration_scale: float = 1.0): # minimum thrust
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -42,15 +42,15 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [90.0, 180.0, 90.0, 90.0, #pitch up
+                             0.0, 180.0, 180.0, 90.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             0.0, 90.0, 180.0, 180.0, # Pitch Down
+                             180.0, 90.0, 0.0, 180.0, # Swing down
+                             180.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             180.0, 180.0, 0.0, 90.0, # Pitch up
+                             90.0, 180.0, 90.0, 90.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
@@ -66,7 +66,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_2_turn_right(self, duration_scale: float = 1.0):
+    def canned_2_medium_thrust(self, duration_scale: float = 1.0): # Medium Thrust
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -74,15 +74,15 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [90.0, 165.0, 90.0, 105.0, #pitch up
+                             0.0, 165.0, 180.0, 105.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             0.0, 105.0, 180.0, 165.0, # Pitch Down
+                             180.0, 105.0, 0.0, 165.0, # Swing down
+                             180.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             180.0, 165.0, 0.0, 105.0, # Pitch up
+                             90.0, 165.0, 90.0, 105.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
@@ -98,7 +98,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_3_pitch_up(self, duration_scale: float = 1.0):
+    def canned_3_high_thrust(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -106,15 +106,15 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [90.0, 150.0, 90.0, 120.0, #pitch up
+                             0.0, 150.0, 180.0, 120.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             0.0, 120.0, 180.0, 150.0, # Pitch Down
+                             180.0, 120.0, 0.0, 150.0, # Swing down
+                             180.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             180.0, 150.0, 0.0, 120.0, # Pitch up
+                             90.0, 150.0, 90.0, 120.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
@@ -130,7 +130,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_4_pitch_down(self, duration_scale: float = 1.0):
+    def canned_4_forward_right(self, duration_scale: float = 1.0):# both wings swing, but with different attack angles. Using medium thrust on left wing, and low thrust in right wing should yaw right
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -138,15 +138,15 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [90.0, 165.0, 90.0, 90.0, #pitch up
+                             0.0, 165.0, 180.0, 90.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             0.0, 105.0, 180.0, 180.0, # Pitch Down
+                             180.0, 105.0, 0.0, 180.0, # Swing down
+                             180.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             180.0, 165.0, 0.0, 90.0, # Pitch up
+                             90.0, 165.0, 90.0, 90.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
@@ -162,7 +162,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_5_roll_left(self, duration_scale: float = 1.0):
+    def canned_5_forward_left(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -170,15 +170,15 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [90.0, 180.0, 90.0, 105.0, #pitch up
+                             0.0, 180.0, 180.0, 105.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             0.0, 90.0, 180.0, 165.0, # Pitch Down
+                             180.0, 90.0, 0.0, 165.0, # Swing down
+                             180.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             180.0, 180.0, 0.0, 105.0, # Pitch up
+                             90.0, 180.0, 90.0, 105.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
@@ -194,7 +194,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_6_roll_right(self, duration_scale: float = 1.0):
+    def canned_6_hard_right(self, duration_scale: float = 1.0): #only left side produces thrust, should yaw right. Using low thrust on other wing
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -202,15 +202,15 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [90.0, 180.0, 90.0, 135.0, #pitch up
+                             0.0, 180.0, 90.0, 135.0, # Swing up
+                             0.0, 135.0, 90.0, 135.0, # Stay Up and glide
+                             0.0, 90.0, 90.0, 135.0, # Pitch Down
+                             180.0, 90.0, 90.0, 135.0, # Swing down
+                             180.0, 135.0, 90.0, 135.0, # Stay down and glide
+                             180.0, 180.0, 90.0, 135.0, # Pitch up
+                             90.0, 180.0, 90.0, 135.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
@@ -226,7 +226,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_7_dive(self, duration_scale: float = 1.0):
+    def canned_7_hard_left(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -234,15 +234,15 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [90.0, 135.0, 90.0, 90.0, #pitch up
+                             90.0, 135.0, 180.0, 90.0, # Swing up
+                             90.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             90.0, 135.0, 180.0, 180.0, # Pitch Down
+                             90.0, 135.0, 0.0, 180.0, # Swing down
+                             90.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             90.0, 135.0, 0.0, 90.0, # Pitch up
+                             90.0, 135.0, 90.0, 90.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
@@ -258,23 +258,23 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_8_surface(self, duration_scale: float = 1.0):
-        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
+    def canned_8_tail_thrust(self, duration_scale: float = 1.0):
+        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]# will use 0.5 for now, should have same amount of items as target angles below
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
         ]
         commands = {
-            'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'servo_numbers': [4, 5],
+            'target_angles': [50.0, 130.0,
+                             130.0, 50.0,
+                             50.0, 130.0,
+                             130.0, 50.0,
+                             50.0, 130.0,
+                             130.0, 50.0,
+                             50.0, 130.0,
+                             130.0, 50.0,
+                             50.0, 130.0,],
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
