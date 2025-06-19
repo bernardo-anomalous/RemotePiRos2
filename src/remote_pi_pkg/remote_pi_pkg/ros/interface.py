@@ -24,15 +24,15 @@ class ROSInterface(Node):
         # Predefined servo positions for the canned wing cycle
         self.canned_servo_numbers = [0, 1, 2, 3]
         self.canned_target_angles = [
-            [90.0, 140.0, 90.0, 40.0],  # pitch up before swing
-            [0.0, 140.0, 180.0, 40.0],  # swing up
-            [0.0, 90.0, 180.0, 90.0],   # up + glide
-            [0.0, 40.0, 180.0, 140.0],  # pitch down
-            [180.0, 40.0, 0.0, 140.0],  # swing down
-            [180.0, 90.0, 0.0, 90.0],   # down + glide
-            [180.0, 140.0, 0.0, 40.0],  # pitch up
-            [90.0, 140.0, 90.0, 40.0],  # wing to glide
-            [90.0, 90.0, 90.0, 90.0],   # glide
+            [90.0, 180.0, 90.0, 90.0],  # pitch up before swing
+            [0.0, 180.0, 180.0, 90.0],  # swing up
+            [0.0, 135.0, 180.0, 135.0],   # up + glide
+            [0.0, 90.0, 180.0, 180.0],  # pitch down
+            [180.0, 90.0, 0.0, 180.0],  # swing down
+            [180.0, 135.0, 0.0, 135.0],   # down + glide
+            [180.0, 180.0, 0.0, 90.0],  # pitch up
+            [90.0, 180.0, 90.0, 90.0],  # wing to glide
+            [90.0, 135.0, 90.0, 135.0],   # glide
         ]
         self.canned_default_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         self.canned_easing_algorithms = [
