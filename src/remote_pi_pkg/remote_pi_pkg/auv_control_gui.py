@@ -74,12 +74,23 @@ class AUVControlGUI(QWidget):
 
             QTabBar::tab {{
                 height: 30px;
-                width: 180px;
+                width: 140px; /* Reduced from 180px to fit more tabs */
                 padding: 10px;
                 font-size: 18px;
                 background-color: rgba(34, 34, 34, 180);
                 border: 2px solid #00FFFF;
                 margin-right: 4px;
+            }}
+
+            /* Bigger scroll arrows for easier navigation */
+            QTabBar QToolButton {{
+                width: 30px;
+                height: 30px;
+            }}
+
+            QTabBar::left-arrow, QTabBar::right-arrow {{
+                width: 30px;
+                height: 30px;
             }}
 
             QTabBar::tab:selected {{
