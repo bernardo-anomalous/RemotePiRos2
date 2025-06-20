@@ -279,7 +279,7 @@ class AUVControlGUI(QWidget):
             else:
                 label = match.group(1)
             btn = QPushButton(label)
-            btn.setFixedHeight(50)
+            btn.setFixedHeight(35)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             method = getattr(self.ros_node.canned_movements, name)
             btn.clicked.connect(
@@ -315,7 +315,7 @@ class AUVControlGUI(QWidget):
             else:
                 label = match.group(1)
             btn = QPushButton(label)
-            btn.setFixedHeight(50)
+            btn.setFixedHeight(35)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             method = getattr(self.ros_node.canned_movements, name)
             btn.clicked.connect(
