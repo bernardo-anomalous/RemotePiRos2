@@ -3,6 +3,7 @@
 
 from auv_custom_interfaces.msg import ServoMovementCommand
 import rclpy
+import math
 
 
 class CannedMovements:
@@ -41,8 +42,31 @@ class CannedMovements:
 
         return commands
 
+    def _fill_current_placeholders(self, commands):
+        """Replace ``None`` or NaN target angles with current servo angles."""
+        servo_nums = commands.get('servo_numbers', [])
+        if not servo_nums:
+            return commands
+
+        angles = list(commands.get('target_angles', []))
+        current = getattr(self.ros, 'current_servo_angles', None)
+        if not current or len(current) <= max(servo_nums):
+            return commands
+
+        step = len(servo_nums)
+        for i, angle in enumerate(angles):
+            if angle is None or (isinstance(angle, float) and math.isnan(angle)):
+                servo_idx = servo_nums[i % step]
+                try:
+                    angles[i] = float(current[servo_idx])
+                except Exception:
+                    pass
+        commands['target_angles'] = angles
+        return commands
+
     def _publish(self, commands):
         commands = self._prepend_current_positions(commands)
+        commands = self._fill_current_placeholders(commands)
         servo_nums = commands['servo_numbers']
         wing_used = any(n in [0, 1, 2, 3] for n in servo_nums)
         tail_used = any(n in [4, 5] for n in servo_nums)
