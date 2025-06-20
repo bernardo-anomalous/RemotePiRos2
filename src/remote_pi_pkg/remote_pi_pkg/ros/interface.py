@@ -59,7 +59,11 @@ class ROSInterface(Node):
         self.target_pitch_pub = self.create_publisher(Float32, 'target_pitch', 10)
         self.canned_pub = self.create_publisher(ServoMovementCommand, 'servo_interpolation_commands', 10)
         self.pid_pub = self.create_publisher(Bool, 'wing_pid_active', 10)
-        self.create_subscription(Bool, 'wing_pid_active', self.wing_pid_status_callback, 10)
+        self.create_subscription(Bool, 'wing_pid_active',
+                                 self.wing_pid_status_callback, 10)
+        self.tail_pid_pub = self.create_publisher(Bool, 'tail_pid_active', 10)
+        self.create_subscription(Bool, 'tail_pid_active',
+                                 self.tail_pid_status_callback, 10)
 
         
         # Lifecycle service client
@@ -78,6 +82,8 @@ class ROSInterface(Node):
         self.create_subscription(Vector3, 'imu/euler', self.euler_callback, 10)
         self.roll_pid_enabled = True                     # Tracks current Roll PID state
         self.pid_reattach_pending = False                # Flags whether we are waiting to re-enable PID
+        self.tail_pid_enabled = True                     # Tracks current tail PID state
+        self.tail_pid_reattach_pending = False           # Flags whether we are waiting to re-enable tail PID
 
         # IMU Health Status Subscriber
         self.imu_health_status = "UNKNOWN"  # Default state until data arrives
@@ -138,6 +144,11 @@ class ROSInterface(Node):
                 self.set_pid(True)
                 self.roll_pid_enabled = True
                 self.pid_reattach_pending = False
+            if self.tail_pid_reattach_pending:
+                self.get_logger().info("[ROSInterface] Servo driver nominal — reactivating Tail PID (post-canned).")
+                self.set_tail_pid(True)
+                self.tail_pid_enabled = True
+                self.tail_pid_reattach_pending = False
 
     def lifecycle_state_callback(self, msg: String):
         new_state = msg.data.strip().lower()
@@ -181,11 +192,17 @@ class ROSInterface(Node):
 
 
     def publish_canned(self):
-        # Step 1: Deactivate Roll PID immediately before sending the canned message
-        #self.get_logger().info("[ROSInterface] Deactivating Roll PID before sending canned movement.")
-        self.set_pid(False)
-        self.roll_pid_enabled = False
-        self.pid_reattach_pending = True  # Tell the system to re-enable later
+        # Step 1: Deactivate relevant PID controllers before sending the canned message
+        wing_used = any(n in [0, 1, 2, 3] for n in self.canned_servo_numbers)
+        tail_used = any(n in [4, 5] for n in self.canned_servo_numbers)
+        if wing_used:
+            self.set_pid(False)
+            self.roll_pid_enabled = False
+            self.pid_reattach_pending = True  # Tell the system to re-enable later
+        if tail_used:
+            self.set_tail_pid(False)
+            self.tail_pid_enabled = False
+            self.tail_pid_reattach_pending = True
 
         # Step 2: Build the canned command from predefined step data
         adjusted_durations = [d * self.canned_duration_factor
@@ -228,9 +245,16 @@ class ROSInterface(Node):
             self.get_logger().error("Invalid canned step index")
             return
 
-        self.set_pid(False)
-        self.roll_pid_enabled = False
-        self.pid_reattach_pending = True
+        wing_used = any(n in [0, 1, 2, 3] for n in self.canned_servo_numbers)
+        tail_used = any(n in [4, 5] for n in self.canned_servo_numbers)
+        if wing_used:
+            self.set_pid(False)
+            self.roll_pid_enabled = False
+            self.pid_reattach_pending = True
+        if tail_used:
+            self.set_tail_pid(False)
+            self.tail_pid_enabled = False
+            self.tail_pid_reattach_pending = True
 
         msg = ServoMovementCommand()
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -257,6 +281,13 @@ class ROSInterface(Node):
         self.pid_pub.publish(msg)
         state = "ACTIVATED" if activate else "DEACTIVATED"
         #self.get_logger().info(f"{state} ROLL PID.")
+
+    def set_tail_pid(self, activate: bool):
+        msg = Bool()
+        msg.data = activate
+        self.tail_pid_pub.publish(msg)
+        state = "ACTIVATED" if activate else "DEACTIVATED"
+        #self.get_logger().info(f"Tail PID {state}")
 
     def servo_angles_callback(self, msg: Float32MultiArray):
         self.current_servo_angles = list(msg.data)
@@ -338,6 +369,10 @@ class ROSInterface(Node):
 
     def wing_pid_status_callback(self, msg):
         self.roll_pid_enabled = msg.data
+        # Optionally, emit a signal to the GUI if needed
+
+    def tail_pid_status_callback(self, msg):
+        self.tail_pid_enabled = msg.data
         # Optionally, emit a signal to the GUI if needed
         
     def check_lifecycle_future(self):
