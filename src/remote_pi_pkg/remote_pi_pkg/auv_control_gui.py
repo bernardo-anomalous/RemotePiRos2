@@ -387,8 +387,19 @@ class AUVControlGUI(QWidget):
         self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
         self.nav_servo_status_label.setWordWrap(True)
 
+        self.nav_roll_pid_status_label = QLabel("ROLL PID: UNKNOWN")
+        self.nav_roll_pid_status_label.setStyleSheet(
+            "font-size: 18px; color: #AAAAAA;"
+        )
+        self.nav_pitch_pid_status_label = QLabel("PITCH PID: UNKNOWN")
+        self.nav_pitch_pid_status_label.setStyleSheet(
+            "font-size: 18px; color: #AAAAAA;"
+        )
+
         nav_right_layout.addWidget(self.nav_imu_health_label)
         nav_right_layout.addWidget(self.nav_servo_status_label)
+        nav_right_layout.addWidget(self.nav_roll_pid_status_label)
+        nav_right_layout.addWidget(self.nav_pitch_pid_status_label)
         nav_right_layout.addStretch(1)
         nav_main_layout.addLayout(nav_right_layout, 1)
 
@@ -840,6 +851,31 @@ class AUVControlGUI(QWidget):
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red for anything else (errors, faults)
             if hasattr(self, 'nav_servo_status_label'):
                 self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")
+
+        # === Update PID Status Labels (Navigation Tab) ===
+        if hasattr(self, 'nav_roll_pid_status_label'):
+            if self.ros_node.roll_pid_enabled:
+                self.nav_roll_pid_status_label.setText("ROLL PID: ACTIVE")
+                self.nav_roll_pid_status_label.setStyleSheet(
+                    "font-size: 18px; color: #00FF00;"
+                )
+            else:
+                self.nav_roll_pid_status_label.setText("ROLL PID: INACTIVE")
+                self.nav_roll_pid_status_label.setStyleSheet(
+                    "font-size: 18px; color: #FF4500;"
+                )
+
+        if hasattr(self, 'nav_pitch_pid_status_label'):
+            if self.ros_node.tail_pid_enabled:
+                self.nav_pitch_pid_status_label.setText("PITCH PID: ACTIVE")
+                self.nav_pitch_pid_status_label.setStyleSheet(
+                    "font-size: 18px; color: #00FF00;"
+                )
+            else:
+                self.nav_pitch_pid_status_label.setText("PITCH PID: INACTIVE")
+                self.nav_pitch_pid_status_label.setStyleSheet(
+                    "font-size: 18px; color: #FF4500;"
+                )
             
 
 
