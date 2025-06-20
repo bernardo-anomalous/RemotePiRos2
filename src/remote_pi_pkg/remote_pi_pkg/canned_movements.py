@@ -459,3 +459,58 @@ class CannedMovements:
         }
         self._publish(commands)
 
+    
+    def canned_13_ACCEL(self, duration_scale: float = 1.0): # minimum thrust
+        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0, 0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0, 2.0, 0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
+        commands = {
+            'servo_numbers': [0, 1, 2, 3],
+            'target_angles': [90.0, 180.0, 90.0, 90.0, #pitch up
+                             0.0, 180.0, 180.0, 90.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             0.0, 90.0, 180.0, 180.0, # Pitch Down
+                             180.0, 90.0, 0.0, 180.0, # Swing down
+                             180.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             180.0, 180.0, 0.0, 90.0, # Pitch up
+                             90.0, 180.0, 90.0, 90.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0, #pitch to neutral
+                             90.0, 165.0, 90.0, 105.0, #pitch up  ##start thrust 2
+                             0.0, 165.0, 180.0, 105.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             0.0, 105.0, 180.0, 165.0, # Pitch Down
+                             180.0, 105.0, 0.0, 165.0, # Swing down
+                             180.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             180.0, 165.0, 0.0, 105.0, # Pitch up
+                             90.0, 165.0, 90.0, 105.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
+                             90.0, 150.0, 90.0, 120.0, #pitch up ##start thrust 3
+                             0.0, 150.0, 180.0, 120.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0, # Stay Up and glide
+                             0.0, 120.0, 180.0, 150.0, # Pitch Down
+                             180.0, 120.0, 0.0, 150.0, # Swing down
+                             180.0, 135.0, 0.0, 135.0, # Stay down and glide
+                             180.0, 150.0, 0.0, 120.0, # Pitch up
+                             90.0, 150.0, 90.0, 120.0, # Swing back to glide
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
+            'durations': adjusted,
+            'easing_algorithms': [
+                'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
+                'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 
+                'EXPONENTIAL', 'EXPONENTIAL', 'CUBIC', 'CUBIC',
+                'EXPONENTIAL', 'CUBIC', 'CUBIC','EXPONENTIAL', 
+                'CUBIC', 'EXPONENTIAL', 'EXPONENTIAL', 'CUBIC', 
+                'CUBIC', 'EXPONENTIAL','CUBIC', 'CUBIC', 
+                'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'
+            ],
+            'easing_in_factors': [0.0] * 27,
+            'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1,0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1,0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
+            'movement_type': 'THRUST_UNIT',
+            'deadline': (self.ros.get_clock().now() +
+                        rclpy.duration.Duration(seconds=5)).to_msg(),
+            'operational_mode': 'ENERGY_EFFICIENT',
+            'priority': 0,
+        }
+        self._publish(commands)
