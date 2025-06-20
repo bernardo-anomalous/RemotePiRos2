@@ -12,9 +12,19 @@ class CannedMovements:
         self.ros = ros_interface
 
     def _publish(self, commands):
-        self.ros.set_pid(False)
-        self.ros.roll_pid_enabled = False
-        self.ros.pid_reattach_pending = True
+        servo_nums = commands['servo_numbers']
+        wing_used = any(n in [0, 1, 2, 3] for n in servo_nums)
+        tail_used = any(n in [4, 5] for n in servo_nums)
+
+        if wing_used:
+            self.ros.set_pid(False)
+            self.ros.roll_pid_enabled = False
+            self.ros.pid_reattach_pending = True
+
+        if tail_used:
+            self.ros.set_tail_pid(False)
+            self.ros.tail_pid_enabled = False
+            self.ros.tail_pid_reattach_pending = True
 
         msg = ServoMovementCommand()
         msg.header.stamp = self.ros.get_clock().now().to_msg()
