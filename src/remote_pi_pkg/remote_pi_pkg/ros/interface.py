@@ -116,6 +116,8 @@ class ROSInterface(Node):
 
         if hasattr(self, 'attitude_widget'):
             self.attitude_widget.set_acceleration(msg.x, msg.y, msg.z)
+        if hasattr(self, 'nav_attitude_widget'):
+            self.nav_attitude_widget.set_acceleration(msg.x, msg.y, msg.z)
 
 
         
@@ -123,8 +125,10 @@ class ROSInterface(Node):
         self.depth = msg.data  # Existing storage
 
         # Push the update to the GUI widget:
-        if hasattr(self, 'attitude_widget'):  # Check if widget exists
+        if hasattr(self, 'attitude_widget'):
             self.attitude_widget.set_depth(msg.data)
+        if hasattr(self, 'nav_attitude_widget'):
+            self.nav_attitude_widget.set_depth(msg.data)
 
 
         
