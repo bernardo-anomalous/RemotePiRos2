@@ -44,6 +44,68 @@ class CannedMovements:
             f"CANNED MOVEMENT PUBLISHED @ {self.ros.get_clock().now().to_msg()}"
         )
 
+    def dynamic_movement(
+        self,
+        servo_numbers,
+        rest_target_angles,
+        durations,
+        easing_algorithms=None,
+        easing_in_factors=None,
+        easing_out_factors=None,
+        movement_type="DYNAMIC",
+        duration_scale: float = 1.0,
+        priority: int = 0,
+    ):
+        """Publish a movement starting from current servo angles."""
+
+        current_angles = []
+        for idx in servo_numbers:
+            try:
+                current_angles.append(float(self.ros.current_servo_angles[idx]))
+            except (IndexError, TypeError, ValueError):
+                current_angles.append(0.0)
+
+        target_angles = current_angles + list(rest_target_angles)
+
+        scaled_durations = [0.01] + [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in durations
+        ]
+
+        step_count = 1 + len(durations)
+
+        if easing_algorithms is None:
+            easing_algorithms = ["CUBIC"] * step_count
+        else:
+            easing_algorithms = ["CUBIC"] + list(easing_algorithms)
+
+        if easing_in_factors is None:
+            easing_in_factors = [0.0] * step_count
+        else:
+            easing_in_factors = [0.0] + list(easing_in_factors)
+
+        if easing_out_factors is None:
+            easing_out_factors = [0.0] * step_count
+        else:
+            easing_out_factors = [0.0] + list(easing_out_factors)
+
+        commands = {
+            "servo_numbers": servo_numbers,
+            "target_angles": target_angles,
+            "durations": scaled_durations,
+            "easing_algorithms": easing_algorithms,
+            "easing_in_factors": easing_in_factors,
+            "easing_out_factors": easing_out_factors,
+            "movement_type": movement_type,
+            "deadline": (
+                self.ros.get_clock().now()
+                + rclpy.duration.Duration(seconds=5)
+            ).to_msg(),
+            "operational_mode": "ENERGY_EFFICIENT",
+            "priority": priority,
+        }
+        self._publish(commands)
+
     def canned_1_low_thrust(self, duration_scale: float = 1.0): # minimum thrust
         base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
         adjusted = [

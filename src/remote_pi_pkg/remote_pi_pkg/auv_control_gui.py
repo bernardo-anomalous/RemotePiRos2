@@ -256,6 +256,13 @@ class AUVControlGUI(QWidget):
             manual_layout.addWidget(btn)
             self.manual_step_buttons.append(btn)
 
+        self.btn_dynamic_move = QPushButton("DYNAMIC MOVE")
+        self.btn_dynamic_move.setFixedHeight(50)
+        self.btn_dynamic_move.setSizePolicy(QSizePolicy.Expanding,
+                                            QSizePolicy.Fixed)
+        self.btn_dynamic_move.clicked.connect(self.dynamic_move_example)
+        manual_layout.addWidget(self.btn_dynamic_move)
+
         manual_layout.addStretch(1)
         manual_tab.setLayout(manual_layout)
 
@@ -697,6 +704,18 @@ class AUVControlGUI(QWidget):
             self.btn_pid_toggle.setText("ROLL PID: INACTIVE")
             self.btn_pid_toggle.setChecked(False)
             self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
+    def dynamic_move_example(self):
+        durations = [self.manual_duration_spin.value()] * 2
+        angles = [
+            0.0, 180.0, 180.0, 90.0,
+            180.0, 90.0, 0.0, 180.0,
+        ]
+        self.ros_node.canned_movements.dynamic_movement(
+            [0, 1, 2, 3],
+            angles,
+            durations,
+        )
 
 
         
