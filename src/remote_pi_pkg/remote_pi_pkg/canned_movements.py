@@ -407,7 +407,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_10_UP_TO_GLIDE(self, duration_scale: float = 1.0):
+    def canned_11_UP_TO_GLIDE(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
@@ -433,7 +433,7 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_11_SWING_DOWN(self, duration_scale: float = 1.0):
+    def canned_12_SWING_DOWN(self, duration_scale: float = 1.0):
         base_durations = [0.2, 2.0, 0.1]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
