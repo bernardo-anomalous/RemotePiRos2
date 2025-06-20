@@ -154,7 +154,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'FORWARD_RIGHT',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -186,7 +186,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'FORWARD_LEFT',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -218,7 +218,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'HARD_RIGHT',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -250,7 +250,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'HARD_LEFT',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -282,7 +282,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'TAIL_THRUST',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
