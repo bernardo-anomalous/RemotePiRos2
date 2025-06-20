@@ -9,6 +9,7 @@ from geometry_msgs.msg import Vector3
 from std_msgs.msg import String   
 from lifecycle_msgs.srv import GetState
 from remote_pi_pkg import CannedMovements
+import threading
 
 
 
@@ -108,6 +109,13 @@ class ROSInterface(Node):
         # Acceleration processed data (for GUI Acceleration Dot)
         self.current_acceleration = Vector3()
         self.create_subscription(Vector3, 'acceleration/processed', self.acceleration_callback, 10)
+
+        # --- Cruise Control ---
+        self.cruise_enabled = False
+        self.cruise_delay = 2.0  # seconds
+        self.last_canned_callback = None
+        self.cruise_timer = None
+        self.last_servo_status_word = None
         
     def acceleration_callback(self, msg: Vector3):
         #print(f"[ROSInterface] Received accel: x={msg.x}, y={msg.y}, z={msg.z}")
@@ -135,8 +143,13 @@ class ROSInterface(Node):
     def servo_status_callback(self, msg):
         self.servo_driver_status = msg.data
         status_word = msg.data.split(":")[0].strip().lower()
+        prev_status = self.last_servo_status_word
+        self.last_servo_status_word = status_word
 
         if status_word == "busy":
+            if self.cruise_timer:
+                self.cruise_timer.cancel()
+                self.cruise_timer = None
             if self.roll_pid_enabled:
                 self.get_logger().info("[ROSInterface] Servo driver busy — deactivating Roll PID.")
                 self.set_pid(False)
@@ -153,6 +166,19 @@ class ROSInterface(Node):
                 self.set_tail_pid(True)
                 self.tail_pid_enabled = True
                 self.tail_pid_reattach_pending = False
+
+            if self.cruise_enabled and prev_status == "busy" and self.last_canned_callback:
+                if self.cruise_timer:
+                    self.cruise_timer.cancel()
+                self.cruise_timer = threading.Timer(self.cruise_delay, self.execute_cruise)
+                self.cruise_timer.start()
+
+    def execute_cruise(self):
+        if self.cruise_enabled and self.last_canned_callback:
+            try:
+                self.last_canned_callback()
+            except Exception as e:
+                self.get_logger().error(f"Cruise execution failed: {e}")
 
     def lifecycle_state_callback(self, msg: String):
         new_state = msg.data.strip().lower()

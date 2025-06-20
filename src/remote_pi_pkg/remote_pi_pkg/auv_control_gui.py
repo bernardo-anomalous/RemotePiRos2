@@ -341,6 +341,7 @@ class AUVControlGUI(QWidget):
         # Right side: joystick
         nav_right_layout = QVBoxLayout()
         self.navigation_joystick = VirtualJoystickWidget()
+        self.navigation_joystick.setFixedSize(200, 200)
         self.navigation_joystick.callback = self.nav_joystick_callback
         nav_right_layout.addWidget(self.navigation_joystick)
 
@@ -371,6 +372,13 @@ class AUVControlGUI(QWidget):
 
         nav_right_layout.addLayout(nav_duration_row)
         nav_right_layout.addWidget(self.navigation_duration_spin)
+
+        # Cruise toggle
+        self.btn_cruise_toggle = QPushButton("CRUISE: OFF")
+        self.btn_cruise_toggle.setCheckable(True)
+        self.btn_cruise_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+        self.btn_cruise_toggle.clicked.connect(self.toggle_cruise)
+        nav_right_layout.addWidget(self.btn_cruise_toggle)
 
         # --- Status indicators (Navigation Tab) ---
         self.nav_imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
@@ -423,7 +431,7 @@ class AUVControlGUI(QWidget):
 
         self.btn_toggle_sticky.clicked.connect(self.toggle_sticky_mode)
         self.btn_pid_toggle.clicked.connect(self.toggle_pid)
-        self.btn_canned.clicked.connect(self.ros_node.publish_canned)
+        self.btn_canned.clicked.connect(self.send_canned_and_remember)
         self.btn_duration_increase.clicked.connect(self.increase_duration)
         self.btn_duration_decrease.clicked.connect(self.decrease_duration)
 
@@ -546,6 +554,16 @@ class AUVControlGUI(QWidget):
             self.btn_toggle_sticky.setText("STICKY MODE: OFF")
             self.btn_toggle_sticky.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
 
+    def toggle_cruise(self):
+        enabled = self.btn_cruise_toggle.isChecked()
+        self.ros_node.cruise_enabled = enabled
+        if enabled:
+            self.btn_cruise_toggle.setText("CRUISE: ON")
+            self.btn_cruise_toggle.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+        else:
+            self.btn_cruise_toggle.setText("CRUISE: OFF")
+            self.btn_cruise_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
     def toggle_manual_feedback(self):
         self.manual_feedback_enabled = not self.manual_feedback_enabled
         if self.manual_feedback_enabled:
@@ -569,15 +587,23 @@ class AUVControlGUI(QWidget):
 
     def make_manual_step_handler(self, btn, method):
         def handler():
-            method(duration_scale=self.manual_duration_spin.value())
+            dur = self.manual_duration_spin.value()
+            method(duration_scale=dur)
+            self.ros_node.last_canned_callback = lambda: method(duration_scale=dur)
             if self.manual_feedback_enabled:
                 self.highlight_manual_button(btn)
         return handler
 
     def make_nav_step_handler(self, method):
         def handler():
-            method(duration_scale=self.navigation_duration_spin.value())
+            dur = self.navigation_duration_spin.value()
+            method(duration_scale=dur)
+            self.ros_node.last_canned_callback = lambda: method(duration_scale=dur)
         return handler
+
+    def send_canned_and_remember(self):
+        self.ros_node.publish_canned()
+        self.ros_node.last_canned_callback = self.ros_node.publish_canned
 
         
         
