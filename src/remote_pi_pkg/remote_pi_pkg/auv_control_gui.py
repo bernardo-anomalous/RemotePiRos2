@@ -234,6 +234,20 @@ class AUVControlGUI(QWidget):
         manual_layout.addLayout(duration_row)
         manual_layout.addWidget(self.manual_duration_spin)
 
+        # Manual step feedback toggle
+        self.manual_feedback_enabled = True
+        self.last_manual_button = None
+        self.btn_manual_feedback_toggle = QPushButton("STEP FEEDBACK: ON")
+        self.btn_manual_feedback_toggle.setCheckable(True)
+        self.btn_manual_feedback_toggle.setChecked(True)
+        self.btn_manual_feedback_toggle.setStyleSheet(
+            "border: 2px solid #00FF00; color: #00FF00;"
+        )
+        self.btn_manual_feedback_toggle.clicked.connect(
+            self.toggle_manual_feedback
+        )
+        manual_layout.addWidget(self.btn_manual_feedback_toggle)
+
         # Build manual step buttons dynamically from available canned movements
         self.manual_step_buttons = []
         canned_re = re.compile(r'^canned_(\d+)(?:_(.*))?$')
@@ -251,7 +265,7 @@ class AUVControlGUI(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             method = getattr(self.ros_node.canned_movements, name)
             btn.clicked.connect(
-                lambda _, m=method: m(duration_scale=self.manual_duration_spin.value())
+                self.make_manual_step_handler(btn, method)
             )
             manual_layout.addWidget(btn)
             self.manual_step_buttons.append(btn)
@@ -417,6 +431,34 @@ class AUVControlGUI(QWidget):
         else:
             self.btn_toggle_sticky.setText("STICKY MODE: OFF")
             self.btn_toggle_sticky.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+
+    def toggle_manual_feedback(self):
+        self.manual_feedback_enabled = not self.manual_feedback_enabled
+        if self.manual_feedback_enabled:
+            self.btn_manual_feedback_toggle.setText("STEP FEEDBACK: ON")
+            self.btn_manual_feedback_toggle.setStyleSheet(
+                "border: 2px solid #00FF00; color: #00FF00;"
+            )
+        else:
+            self.btn_manual_feedback_toggle.setText("STEP FEEDBACK: OFF")
+            self.btn_manual_feedback_toggle.setStyleSheet(
+                "border: 2px solid #FF4500; color: #FF4500;"
+            )
+            if self.last_manual_button:
+                self.last_manual_button.setStyleSheet("border: 2px solid #00FFFF;")
+
+    def highlight_manual_button(self, btn):
+        if self.last_manual_button:
+            self.last_manual_button.setStyleSheet("border: 2px solid #00FFFF;")
+        btn.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+        self.last_manual_button = btn
+
+    def make_manual_step_handler(self, btn, method):
+        def handler():
+            method(duration_scale=self.manual_duration_spin.value())
+            if self.manual_feedback_enabled:
+                self.highlight_manual_button(btn)
+        return handler
 
         
         
