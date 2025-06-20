@@ -355,30 +355,24 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_9_forward(self, duration_scale: float = 1.0):
-        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
+    def canned_9_SWING_UP(self, duration_scale: float = 1.0):
+        base_durations = [0.2, 2.0, 0.1]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [None, 165.0, None, 105.0, #pitch up
+                             0.0, 165.0, 180.0, 105.0, # Swing up
+                             0.0, 135.0, 180.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
                 'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'
             ],
             'easing_in_factors': [0.0] * 9,
-            'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
+            'easing_out_factors': [0.1, 0.0, 0.0],
             'movement_type': 'THRUST_UNIT',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
@@ -387,30 +381,76 @@ class CannedMovements:
         }
         self._publish(commands)
 
-    def canned_10_reverse(self, duration_scale: float = 1.0):
-        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
+    def canned_10_DOWN_TO_GLIDE(self, duration_scale: float = 1.0):
+        base_durations = [0.2, 2.0, 0.1]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [90.0, 140.0, 90.0, 40.0,
-                             0.0, 140.0, 180.0, 40.0,
-                             0.0, 90.0, 180.0, 90.0,
-                             0.0, 40.0, 180.0, 140.0,
-                             180.0, 40.0, 0.0, 140.0,
-                             180.0, 90.0, 0.0, 90.0,
-                             180.0, 140.0, 0.0, 40.0,
-                             90.0, 140.0, 90.0, 40.0,
-                             90.0, 90.0, 90.0, 90.0],
+            'target_angles': [None, 105.0, None, 165.0, # Pitch Down
+                             90.0, 105.0, 90.0, 165.0, # Swing down
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
                 'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'
             ],
             'easing_in_factors': [0.0] * 9,
-            'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
+            'easing_out_factors': [0.1, 0.0, 0.0],
+            'movement_type': 'THRUST_UNIT',
+            'deadline': (self.ros.get_clock().now() +
+                        rclpy.duration.Duration(seconds=5)).to_msg(),
+            'operational_mode': 'ENERGY_EFFICIENT',
+            'priority': 0,
+        }
+        self._publish(commands)
+
+    def canned_10_UP_TO_GLIDE(self, duration_scale: float = 1.0):
+        base_durations = [0.2, 2.0, 0.1]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
+        commands = {
+            'servo_numbers': [0, 1, 2, 3],
+            'target_angles': [None, 165.0, None, 105.0, # Pitch Up
+                             90.0, 165.0, 90.0, 105.0, # Swing up
+                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
+            'durations': adjusted,
+            'easing_algorithms': [
+                'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
+                'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'
+            ],
+            'easing_in_factors': [0.0] * 9,
+            'easing_out_factors': [0.1, 0.0, 0.0],
+            'movement_type': 'THRUST_UNIT',
+            'deadline': (self.ros.get_clock().now() +
+                        rclpy.duration.Duration(seconds=5)).to_msg(),
+            'operational_mode': 'ENERGY_EFFICIENT',
+            'priority': 0,
+        }
+        self._publish(commands)
+
+    def canned_10_SWING_DOWN(self, duration_scale: float = 1.0):
+        base_durations = [0.2, 2.0, 0.1]
+        adjusted = [
+            d * self.ros.canned_duration_factor * duration_scale
+            for d in base_durations
+        ]
+        commands = {
+            'servo_numbers': [0, 1, 2, 3],
+            'target_angles': [None, 105.0, None, 165.0, # Pitch DOWN
+                             180.0, 105.0, 0.0, 165.0, # Swing DOWN
+                             180.0, 135.0, 0.0, 135.0], # Pitch to neutral
+            'durations': adjusted,
+            'easing_algorithms': [
+                'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
+                'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'
+            ],
+            'easing_in_factors': [0.0] * 9,
+            'easing_out_factors': [0.1, 0.0, 0.0],
             'movement_type': 'THRUST_UNIT',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
