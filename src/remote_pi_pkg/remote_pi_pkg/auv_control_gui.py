@@ -319,7 +319,7 @@ class AUVControlGUI(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             method = getattr(self.ros_node.canned_movements, name)
             btn.clicked.connect(
-                self.make_manual_step_handler(btn, method)
+                self.make_nav_step_handler(method)
             )
             nav_left_layout.addWidget(btn)
             self.navigation_step_buttons.append(btn)
@@ -332,6 +332,34 @@ class AUVControlGUI(QWidget):
         self.navigation_joystick = VirtualJoystickWidget()
         self.navigation_joystick.callback = self.nav_joystick_callback
         nav_right_layout.addWidget(self.navigation_joystick)
+
+        # --- Navigation Step Duration Controls ---
+        nav_duration_row = QHBoxLayout()
+        nav_duration_row.addWidget(QLabel("STEP DURATION"))
+
+        self.navigation_duration_spin = QDoubleSpinBox()
+        self.navigation_duration_spin.setRange(0.1, 10.0)
+        self.navigation_duration_spin.setSingleStep(0.1)
+        self.navigation_duration_spin.setValue(1.0)
+        self.navigation_duration_spin.hide()
+
+        self.navigation_duration_label = QLabel(f"{self.navigation_duration_spin.value():.1f}s")
+        self.navigation_duration_label.setAlignment(Qt.AlignCenter)
+        self.navigation_duration_label.setStyleSheet("font-size: 24px;")
+
+        self.btn_nav_duration_decrease = QPushButton("-")
+        self.btn_nav_duration_increase = QPushButton("+")
+
+        self.btn_nav_duration_decrease.clicked.connect(self.navigation_duration_spin.stepDown)
+        self.btn_nav_duration_increase.clicked.connect(self.navigation_duration_spin.stepUp)
+        self.navigation_duration_spin.valueChanged.connect(self.update_nav_duration_label)
+
+        nav_duration_row.addWidget(self.btn_nav_duration_decrease)
+        nav_duration_row.addWidget(self.navigation_duration_label)
+        nav_duration_row.addWidget(self.btn_nav_duration_increase)
+
+        nav_right_layout.addLayout(nav_duration_row)
+        nav_right_layout.addWidget(self.navigation_duration_spin)
         nav_right_layout.addStretch(1)
         nav_main_layout.addLayout(nav_right_layout, 1)
 
@@ -525,6 +553,11 @@ class AUVControlGUI(QWidget):
                 self.highlight_manual_button(btn)
         return handler
 
+    def make_nav_step_handler(self, method):
+        def handler():
+            method(duration_scale=self.navigation_duration_spin.value())
+        return handler
+
         
         
     def quit_app(self):
@@ -542,6 +575,9 @@ class AUVControlGUI(QWidget):
 
     def update_manual_duration_label(self):
         self.manual_duration_label.setText(f"{self.manual_duration_spin.value():.1f}s")
+
+    def update_nav_duration_label(self):
+        self.navigation_duration_label.setText(f"{self.navigation_duration_spin.value():.1f}s")
 
     def joystick_callback(self, norm_x, norm_y):
         max_angle = 15.0  # or change to 45.0 for tighter control
