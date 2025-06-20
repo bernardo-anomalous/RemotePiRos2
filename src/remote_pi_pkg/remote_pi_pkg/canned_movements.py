@@ -485,7 +485,7 @@ class CannedMovements:
                              180.0, 135.0, 0.0, 135.0, # Stay down and glide
                              180.0, 165.0, 0.0, 105.0, # Pitch up
                              90.0, 165.0, 90.0, 105.0, # Swing back to glide
-                             90.0, 135.0, 90.0, 135.0], # Pitch to neutral
+                             90.0, 135.0, 90.0, 135.0, # Pitch to neutral
                              90.0, 150.0, 90.0, 120.0, #pitch up ##start thrust 3
                              0.0, 150.0, 180.0, 120.0, # Swing up
                              0.0, 135.0, 180.0, 135.0, # Stay Up and glide
