@@ -371,6 +371,16 @@ class AUVControlGUI(QWidget):
 
         nav_right_layout.addLayout(nav_duration_row)
         nav_right_layout.addWidget(self.navigation_duration_spin)
+
+        # --- Status indicators (Navigation Tab) ---
+        self.nav_imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
+        self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.nav_servo_status_label = QLabel("SERVO DRIVER STATUS: UNKNOWN")
+        self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.nav_servo_status_label.setWordWrap(True)
+
+        nav_right_layout.addWidget(self.nav_imu_health_label)
+        nav_right_layout.addWidget(self.nav_servo_status_label)
         nav_right_layout.addStretch(1)
         nav_main_layout.addLayout(nav_right_layout, 1)
 
@@ -760,28 +770,50 @@ class AUVControlGUI(QWidget):
         if normalized == "IMU OK":
             self.imu_health_label.setText("IMU HEALTH: OK")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #00FF00;")
+            if hasattr(self, 'nav_imu_health_label'):
+                self.nav_imu_health_label.setText("IMU HEALTH: OK")
+                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #00FF00;")
         elif "UNSTABLE" in normalized:
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Orange
+            if hasattr(self, 'nav_imu_health_label'):
+                self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health}")
+                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #FFA500;")
         elif "RESTARTING" in normalized:
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red
+            if hasattr(self, 'nav_imu_health_label'):
+                self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health}")
+                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #FF4500;")
         else:
             # Display unrecognised status text directly
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health or 'UNKNOWN'}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+            if hasattr(self, 'nav_imu_health_label'):
+                self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health or 'UNKNOWN'}")
+                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
             
         servo_status = self.ros_node.servo_driver_status
         self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
+        if hasattr(self, 'nav_servo_status_label'):
+            self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
 
         if "NOMINAL" in servo_status.upper():
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")  # Green
+            if hasattr(self, 'nav_servo_status_label'):
+                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")
         elif "BUSY" in servo_status.upper():
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Yellow / Orange
+            if hasattr(self, 'nav_servo_status_label'):
+                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #FFA500;")
         elif "UNKNOWN" in servo_status.upper():
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")  # Gray
+            if hasattr(self, 'nav_servo_status_label'):
+                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
         else:
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red for anything else (errors, faults)
+            if hasattr(self, 'nav_servo_status_label'):
+                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")
             
 
 
