@@ -11,7 +11,38 @@ class CannedMovements:
     def __init__(self, ros_interface):
         self.ros = ros_interface
 
+    def _prepend_current_positions(self, commands, base_duration: float = 1.0):
+        """Prepend current servo positions to command sequence.
+
+        This ensures each canned movement starts from the most recently
+        reported servo angles. If current angles are unavailable the
+        commands are returned unchanged.
+        """
+
+        servo_nums = commands.get('servo_numbers', [])
+        if not servo_nums:
+            return commands
+
+        current = getattr(self.ros, 'current_servo_angles', None)
+        if not current or len(current) <= max(servo_nums):
+            # Skip prepend if we don't have angles for all requested servos
+            return commands
+
+        try:
+            current_angles = [current[n] for n in servo_nums]
+        except Exception:
+            return commands
+
+        commands['target_angles'] = current_angles + commands['target_angles']
+        commands['durations'] = [base_duration] + commands['durations']
+        commands['easing_algorithms'] = ['EXPONENTIAL'] + commands['easing_algorithms']
+        commands['easing_in_factors'] = [0.0] + commands['easing_in_factors']
+        commands['easing_out_factors'] = [0.0] + commands['easing_out_factors']
+
+        return commands
+
     def _publish(self, commands):
+        commands = self._prepend_current_positions(commands)
         servo_nums = commands['servo_numbers']
         wing_used = any(n in [0, 1, 2, 3] for n in servo_nums)
         tail_used = any(n in [4, 5] for n in servo_nums)
