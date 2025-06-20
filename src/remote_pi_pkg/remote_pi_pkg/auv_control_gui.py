@@ -125,18 +125,32 @@ class AUVControlGUI(QWidget):
         # Send target values to widgets every frame
         if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
             self.attitude_widget.update_attitude_target(self.ros_node.euler)
+            if hasattr(self, 'nav_attitude_widget'):
+                self.nav_attitude_widget.update_attitude_target(self.ros_node.euler)
             
             # ✅ ADD THIS to fix your depth gauge:
         if hasattr(self.ros_node, 'depth'):
             self.attitude_widget.set_depth(self.ros_node.depth)
+            if hasattr(self, 'nav_attitude_widget'):
+                self.nav_attitude_widget.set_depth(self.ros_node.depth)
 
         if self.ros_node.heading is not None:
             self.heading_hud.update_heading_target(self.ros_node.heading)
+            if hasattr(self, 'nav_heading'):
+                self.nav_heading.update_heading_target(self.ros_node.heading)
             self.attitude_widget.update_heading_target(self.ros_node.heading)  # <<< THIS WAS MISSING
+            if hasattr(self, 'nav_heading'):
+                self.nav_heading.update_heading_target(self.ros_node.heading)
+            if hasattr(self, 'nav_attitude_widget'):
+                self.nav_attitude_widget.update_heading_target(self.ros_node.heading)
 
         # Force repaint (rely on the widget's smoothing)
         self.attitude_widget.update()
         self.heading_hud.update()
+        if hasattr(self, 'nav_attitude_widget'):
+            self.nav_attitude_widget.update()
+        if hasattr(self, 'nav_heading'):
+            self.nav_heading.update()
 
 
 
@@ -150,6 +164,7 @@ class AUVControlGUI(QWidget):
         tabs = QTabWidget()
 
         operation_tab = QWidget()
+        navigation_tab = QWidget()
         settings_tab = QWidget()
         manual_tab = QWidget()
 
@@ -158,12 +173,15 @@ class AUVControlGUI(QWidget):
         # === Transparent backgrounds for main tabs ===
         operation_tab.setAttribute(Qt.WA_StyledBackground, True)
         operation_tab.setStyleSheet("background: transparent;")
+        navigation_tab.setAttribute(Qt.WA_StyledBackground, True)
+        navigation_tab.setStyleSheet("background: transparent;")
         settings_tab.setAttribute(Qt.WA_StyledBackground, True)
         settings_tab.setStyleSheet("background: transparent;")
         manual_tab.setAttribute(Qt.WA_StyledBackground, True)
         manual_tab.setStyleSheet("background: transparent;")
 
         tabs.addTab(operation_tab, "OPERATION")
+        tabs.addTab(navigation_tab, "NAVIGATION")
         tabs.addTab(manual_tab, "MANUAL INPUT")
         tabs.addTab(settings_tab, "SETTINGS")
         outer_layout.addWidget(tabs)
@@ -272,6 +290,53 @@ class AUVControlGUI(QWidget):
 
         manual_layout.addStretch(1)
         manual_tab.setLayout(manual_layout)
+
+        # === NAVIGATION TAB ===
+        navigation_layout = QVBoxLayout()
+
+        self.nav_heading = HeadingBarWidget()
+        self.nav_heading.setMaximumHeight(80)
+        navigation_layout.addWidget(self.nav_heading, alignment=Qt.AlignTop)
+
+        self.nav_attitude_widget = AttitudeIndicator()
+        navigation_layout.addWidget(self.nav_attitude_widget)
+        self.ros_node.nav_attitude_widget = self.nav_attitude_widget
+
+        nav_main_layout = QHBoxLayout()
+
+        # Left side: canned movement buttons
+        nav_left_layout = QVBoxLayout()
+        self.navigation_step_buttons = []
+        for name in method_names:
+            match = canned_re.match(name)
+            suffix = match.group(2)
+            if suffix:
+                label = suffix.replace('_', ' ').upper()
+            else:
+                label = match.group(1)
+            btn = QPushButton(label)
+            btn.setFixedHeight(50)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            method = getattr(self.ros_node.canned_movements, name)
+            btn.clicked.connect(
+                self.make_manual_step_handler(btn, method)
+            )
+            nav_left_layout.addWidget(btn)
+            self.navigation_step_buttons.append(btn)
+
+        nav_left_layout.addStretch(1)
+        nav_main_layout.addLayout(nav_left_layout, 1)
+
+        # Right side: joystick
+        nav_right_layout = QVBoxLayout()
+        self.navigation_joystick = VirtualJoystickWidget()
+        self.navigation_joystick.callback = self.nav_joystick_callback
+        nav_right_layout.addWidget(self.navigation_joystick)
+        nav_right_layout.addStretch(1)
+        nav_main_layout.addLayout(nav_right_layout, 1)
+
+        navigation_layout.addLayout(nav_main_layout)
+        navigation_tab.setLayout(navigation_layout)
 
         # === OPERATION TAB ===
         top_status_row = QHBoxLayout()
@@ -497,6 +562,24 @@ class AUVControlGUI(QWidget):
         self.ros_node.publish_pitch()
         self.ros_node.publish_roll()
 
+    def nav_joystick_callback(self, norm_x, norm_y):
+        # Incremental control: down -> pitch up
+        delta_pitch = -norm_y * 5
+        delta_roll = norm_x * 5
+
+        if not hasattr(self, 'last_nav_joystick_publish'):
+            self.last_nav_joystick_publish = time.time()
+        now = time.time()
+        if now - self.last_nav_joystick_publish < 0.05:
+            return
+        self.last_nav_joystick_publish = now
+
+        self.ros_node.target_pitch = max(-100, min(100, self.ros_node.target_pitch + delta_pitch))
+        self.ros_node.target_roll = max(-100, min(100, self.ros_node.target_roll + delta_roll))
+
+        self.ros_node.publish_pitch()
+        self.ros_node.publish_roll()
+
     def update_status(self):
         def colorize(value):
             if isinstance(value, float) and value < 0:
@@ -605,12 +688,18 @@ class AUVControlGUI(QWidget):
         # === Always Update Attitude Widget (Pose) ===
         if self.ros_node.euler is not None and len(self.ros_node.euler) >= 3:
             self.attitude_widget.update_attitude_target(self.ros_node.euler)
+            if hasattr(self, 'nav_attitude_widget'):
+                self.nav_attitude_widget.update_attitude_target(self.ros_node.euler)
 
             self.attitude_widget.update()
+            if hasattr(self, 'nav_attitude_widget'):
+                self.nav_attitude_widget.update()
             
                         # === Update Depth on the Attitude Widget ===
         if hasattr(self.ros_node, 'depth'):
             self.attitude_widget.set_depth(self.ros_node.depth)
+            if hasattr(self, 'nav_attitude_widget'):
+                self.nav_attitude_widget.set_depth(self.ros_node.depth)
 
 
 
