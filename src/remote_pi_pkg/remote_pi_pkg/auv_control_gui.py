@@ -341,7 +341,7 @@ class AUVControlGUI(QWidget):
         # Right side: joystick
         nav_right_layout = QVBoxLayout()
         self.navigation_joystick = VirtualJoystickWidget()
-        self.navigation_joystick.setFixedSize(200, 200)
+        self.navigation_joystick.setFixedSize(220, 220)
         self.navigation_joystick.callback = self.nav_joystick_callback
         nav_right_layout.addWidget(self.navigation_joystick)
 
