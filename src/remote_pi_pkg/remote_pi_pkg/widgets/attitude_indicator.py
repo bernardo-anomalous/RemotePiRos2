@@ -260,41 +260,6 @@ class AttitudeIndicator(QWidget):
         painter.setFont(QFont("Courier New", 12, QFont.Bold))
         painter.drawText(marker_pos + QPointF(-70, 5), f"{self.roll:.1f}°")
 
-        # === Depth Gauge ===
-        if hasattr(self, 'current_depth') and hasattr(self, 'target_depth'):
-            deadband = 0.01
-            target = self.target_depth
-
-            if abs(target) < deadband:
-                target = 0.0
-
-            if target != 0.0:
-                smoothing_factor = 0.1
-                self.current_depth += (target - self.current_depth) * smoothing_factor
-            else:
-                self.current_depth = 0.0
-
-            font = QFont("Courier", 14)
-            painter.setFont(font)
-            painter.setPen(QColor("#00FFFF"))
-
-            base = math.floor(self.current_depth)
-            fraction = self.current_depth - base
-            values = [base - 1, base, base + 1]
-
-            x_offset = self.width() - 80
-            y_center = 70
-            spacing = 20
-
-            for i, val in enumerate(values):
-                offset = (i - 1) - fraction
-                y_pos = y_center + offset * spacing
-                fade = max(0.3, 1 - abs(offset) * 0.7)
-                painter.setOpacity(fade)
-                painter.drawText(x_offset, y_pos, f"{val:.2f}m")
-
-            painter.setOpacity(1.0)
-
         # === Moving Acceleration Dot + Ghost Trail ===
         fast_factor = 0.4
         slow_decay = 0.98
@@ -341,7 +306,42 @@ class AttitudeIndicator(QWidget):
             dot_radius * 2
         )
 
-        
+        # === Depth Gauge ===
+        if hasattr(self, 'current_depth') and hasattr(self, 'target_depth'):
+            deadband = 0.01
+            target = self.target_depth
+
+            if abs(target) < deadband:
+                target = 0.0
+
+            if target != 0.0:
+                smoothing_factor = 0.1
+                self.current_depth += (target - self.current_depth) * smoothing_factor
+            else:
+                self.current_depth = 0.0
+
+            font = QFont("Courier", 14)
+            painter.setFont(font)
+            painter.setPen(QColor("#00FFFF"))
+
+            base = math.floor(self.current_depth)
+            fraction = self.current_depth - base
+            values = [base - 1, base, base + 1]
+
+            x_offset = self.width() - 80
+            y_center = 70
+            spacing = 20
+
+            for i, val in enumerate(values):
+                offset = (i - 1) - fraction
+                y_pos = y_center + offset * spacing
+                fade = max(0.3, 1 - abs(offset) * 0.7)
+                painter.setOpacity(fade)
+                painter.drawText(x_offset, y_pos, f"{val:.2f}m")
+
+            painter.setOpacity(1.0)
+
+
     def set_depth(self, depth_value):
         self.target_depth = depth_value  # Target value from the topic
-        #print(f"Depth updated: {depth_value}")
+        self.update()
