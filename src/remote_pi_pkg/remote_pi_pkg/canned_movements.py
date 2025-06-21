@@ -324,22 +324,22 @@ class CannedMovements:
         self._publish(commands)
 
     def canned_8_tail_thrust(self, duration_scale: float = 1.0):
-        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]# will use 0.5 for now, should have same amount of items as target angles below
+        base_durations = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]# will use 0.5 for now, should have same amount of items as target angles below
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
         ]
         commands = {
             'servo_numbers': [4, 5],
-            'target_angles': [50.0, 130.0,
-                             130.0, 50.0,
-                             50.0, 130.0,
-                             130.0, 50.0,
-                             50.0, 130.0,
-                             130.0, 50.0,
-                             50.0, 130.0,
-                             130.0, 50.0,
-                             50.0, 130.0,],
+            'target_angles': [50.0, 50.0,
+                             130.0, 130.0,
+                             50.0, 50.0,
+                             130.0, 130.0,
+                             50.0, 50.0,
+                             130.0, 130.0,
+                             50.0, 50.0,
+                             130.0, 130.0,
+                             50.0, 50.0,],
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
