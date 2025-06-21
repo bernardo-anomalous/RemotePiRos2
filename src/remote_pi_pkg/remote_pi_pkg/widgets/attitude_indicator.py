@@ -278,21 +278,20 @@ class AttitudeIndicator(QWidget):
             painter.setFont(font)
             painter.setPen(QColor("#00FFFF"))
 
-            current = round(self.current_depth, 2)
-            previous = round(current - 1, 2)
-            next_val = round(current + 1, 2)
+            base = math.floor(self.current_depth)
+            fraction = self.current_depth - base
+            values = [base - 1, base, base + 1]
 
             x_offset = self.width() - 80
-            y_center_text = 70
+            y_center = 70
+            spacing = 20
 
-            painter.setOpacity(0.3)
-            painter.drawText(x_offset, y_center_text - 20, f"{previous}m")
-
-            painter.setOpacity(1.0)
-            painter.drawText(x_offset, y_center_text, f"{current}m")
-
-            painter.setOpacity(0.3)
-            painter.drawText(x_offset, y_center_text + 20, f"{next_val}m")
+            for i, val in enumerate(values):
+                offset = (i - 1) - fraction
+                y_pos = y_center + offset * spacing
+                fade = max(0.3, 1 - abs(offset) * 0.7)
+                painter.setOpacity(fade)
+                painter.drawText(x_offset, y_pos, f"{val:.2f}m")
 
             painter.setOpacity(1.0)
 
