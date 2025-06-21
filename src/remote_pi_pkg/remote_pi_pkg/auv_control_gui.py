@@ -342,7 +342,7 @@ class AUVControlGUI(QWidget):
         nav_right_layout = QVBoxLayout()
         self.navigation_joystick = VirtualJoystickWidget()
         self.navigation_joystick.setFixedSize(250, 250)
-        self.navigation_joystick.callback = self.nav_joystick_callback
+        self.navigation_joystick.callback = self.joystick_callback
         nav_right_layout.addWidget(self.navigation_joystick)
 
         # --- Navigation Step Duration Controls ---
@@ -694,23 +694,6 @@ class AUVControlGUI(QWidget):
         self.ros_node.publish_pitch()
         self.ros_node.publish_roll()
 
-    def nav_joystick_callback(self, norm_x, norm_y):
-        # Incremental control: down -> pitch up
-        delta_pitch = -norm_y * 5
-        delta_roll = norm_x * 5
-
-        if not hasattr(self, 'last_nav_joystick_publish'):
-            self.last_nav_joystick_publish = time.time()
-        now = time.time()
-        if now - self.last_nav_joystick_publish < 0.05:
-            return
-        self.last_nav_joystick_publish = now
-
-        self.ros_node.target_pitch = max(-100, min(100, self.ros_node.target_pitch + delta_pitch))
-        self.ros_node.target_roll = max(-100, min(100, self.ros_node.target_roll + delta_roll))
-
-        self.ros_node.publish_pitch()
-        self.ros_node.publish_roll()
 
     def update_status(self):
         def colorize(value):
