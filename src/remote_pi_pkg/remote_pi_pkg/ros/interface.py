@@ -116,6 +116,7 @@ class ROSInterface(Node):
         self.last_canned_callback = None
         self.cruise_timer = None
         self.last_servo_status_word = None
+        self.auto_pid_reengage = True
         
     def acceleration_callback(self, msg: Vector3):
         #print(f"[ROSInterface] Received accel: x={msg.x}, y={msg.y}, z={msg.z}")
@@ -157,14 +158,28 @@ class ROSInterface(Node):
 
         elif status_word == "nominal":
             if self.pid_reattach_pending:
-                self.get_logger().info("[ROSInterface] Servo driver nominal — reactivating Roll PID (post-canned).")
-                self.set_pid(True)
-                self.roll_pid_enabled = True
+                if self.auto_pid_reengage:
+                    self.get_logger().info(
+                        "[ROSInterface] Servo driver nominal — reactivating Roll PID (post-canned)."
+                    )
+                    self.set_pid(True)
+                    self.roll_pid_enabled = True
+                else:
+                    self.get_logger().info(
+                        "[ROSInterface] Servo driver nominal — Roll PID reattach skipped (auto disabled)."
+                    )
                 self.pid_reattach_pending = False
             if self.tail_pid_reattach_pending:
-                self.get_logger().info("[ROSInterface] Servo driver nominal — reactivating Tail PID (post-canned).")
-                self.set_tail_pid(True)
-                self.tail_pid_enabled = True
+                if self.auto_pid_reengage:
+                    self.get_logger().info(
+                        "[ROSInterface] Servo driver nominal — reactivating Tail PID (post-canned)."
+                    )
+                    self.set_tail_pid(True)
+                    self.tail_pid_enabled = True
+                else:
+                    self.get_logger().info(
+                        "[ROSInterface] Servo driver nominal — Tail PID reattach skipped (auto disabled)."
+                    )
                 self.tail_pid_reattach_pending = False
 
             if self.cruise_enabled and prev_status == "busy" and self.last_canned_callback:
@@ -318,6 +333,10 @@ class ROSInterface(Node):
         self.tail_pid_pub.publish(msg)
         state = "ACTIVATED" if activate else "DEACTIVATED"
         #self.get_logger().info(f"Tail PID {state}")
+
+    def set_auto_pid_reengage(self, enable: bool):
+        """Enable or disable automatic PID reengagement after canned moves."""
+        self.auto_pid_reengage = enable
 
     def servo_angles_callback(self, msg: Float32MultiArray):
         self.current_servo_angles = list(msg.data)

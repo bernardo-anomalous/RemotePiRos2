@@ -200,6 +200,27 @@ class AUVControlGUI(QWidget):
 
         # === SETTINGS TAB ===
         settings_layout = QVBoxLayout()
+        pid_control_layout = QVBoxLayout()
+        pid_label = QLabel("PID CONTROL")
+        pid_label.setAlignment(Qt.AlignCenter)
+        self.btn_auto_pid = QPushButton("PID AUTO RE ENGAGE")
+        self.btn_auto_pid.setCheckable(True)
+        self.btn_auto_pid.setChecked(True)
+        self.btn_roll_pid_setting = QPushButton("ROLL PID")
+        self.btn_roll_pid_setting.setCheckable(True)
+        self.btn_tail_pid_setting = QPushButton("TAIL PID")
+        self.btn_tail_pid_setting.setCheckable(True)
+
+        self.btn_auto_pid.clicked.connect(self.toggle_auto_pid_reengage)
+        self.btn_roll_pid_setting.clicked.connect(self.toggle_roll_pid_setting)
+        self.btn_tail_pid_setting.clicked.connect(self.toggle_tail_pid_setting)
+
+        pid_control_layout.addWidget(pid_label)
+        pid_control_layout.addWidget(self.btn_auto_pid)
+        pid_control_layout.addWidget(self.btn_roll_pid_setting)
+        pid_control_layout.addWidget(self.btn_tail_pid_setting)
+        settings_layout.addLayout(pid_control_layout)
+
         self.btn_configure = QPushButton("CONFIGURE DRIVER")
         self.btn_activate = QPushButton("ACTIVATE DRIVER")
         self.btn_deactivate = QPushButton("DEACTIVATE DRIVER")
@@ -584,6 +605,7 @@ class AUVControlGUI(QWidget):
         operation_tab.setLayout(operation_layout)
 
         self.update_lifecycle_buttons()
+        self.update_pid_button_state()
 
 
         
@@ -998,16 +1020,46 @@ class AUVControlGUI(QWidget):
         else:
             self.btn_pid_toggle.setText("ROLL PID: INACTIVE")
             self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
-            
+
     def update_pid_button_state(self):
         if self.ros_node.roll_pid_enabled:
             self.btn_pid_toggle.setText("ROLL PID: ACTIVE")
             self.btn_pid_toggle.setChecked(True)
             self.btn_pid_toggle.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+            self.btn_roll_pid_setting.setChecked(True)
+            self.btn_roll_pid_setting.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
         else:
             self.btn_pid_toggle.setText("ROLL PID: INACTIVE")
             self.btn_pid_toggle.setChecked(False)
             self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+            self.btn_roll_pid_setting.setChecked(False)
+            self.btn_roll_pid_setting.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
+        if self.ros_node.tail_pid_enabled:
+            self.btn_tail_pid_setting.setChecked(True)
+            self.btn_tail_pid_setting.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+        else:
+            self.btn_tail_pid_setting.setChecked(False)
+            self.btn_tail_pid_setting.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
+        if getattr(self.ros_node, 'auto_pid_reengage', True):
+            self.btn_auto_pid.setChecked(True)
+            self.btn_auto_pid.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+        else:
+            self.btn_auto_pid.setChecked(False)
+            self.btn_auto_pid.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
+    def toggle_auto_pid_reengage(self):
+        enabled = self.btn_auto_pid.isChecked()
+        self.ros_node.set_auto_pid_reengage(enabled)
+
+    def toggle_roll_pid_setting(self):
+        enabled = self.btn_roll_pid_setting.isChecked()
+        self.ros_node.set_pid(enabled)
+
+    def toggle_tail_pid_setting(self):
+        enabled = self.btn_tail_pid_setting.isChecked()
+        self.ros_node.set_tail_pid(enabled)
 
 
         

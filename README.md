@@ -105,7 +105,8 @@ These allow the GUI to manage the servo driver node's lifecycle (configure, acti
   - `virtual_joystick.py` – joystick that emits normalized roll/pitch commands.
   - `heading_bar.py` – HUD-style heading indicator.
   - `attitude_indicator.py` – graphical pitch/roll indicator with depth display.
-  - `control_status_field.py` – text area summarizing command and sensor data.
+- `control_status_field.py` – text area summarizing command and sensor data.
+- Settings tab includes a PID control section for manual PID toggles and automatic re-engagement.
 
 ## Interactions
 
