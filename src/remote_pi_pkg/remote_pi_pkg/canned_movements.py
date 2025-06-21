@@ -122,7 +122,7 @@ class CannedMovements:
                 'CUBIC', 'CUBIC', 'EXPONENTIAL', 'CUBIC', 'EXPONENTIAL'
             ],
             'easing_in_factors': [0.0] * 9,
-            'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
+            'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             'movement_type': 'THRUST_UNIT',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
