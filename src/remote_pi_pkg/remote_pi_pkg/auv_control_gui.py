@@ -380,6 +380,11 @@ class AUVControlGUI(QWidget):
         self.btn_cruise_toggle.clicked.connect(self.toggle_cruise)
         nav_right_layout.addWidget(self.btn_cruise_toggle)
 
+        # Display the last canned message that cruise mode will repeat
+        self.nav_last_canned_label = QLabel("LAST CANNED: NONE")
+        self.nav_last_canned_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        nav_right_layout.addWidget(self.nav_last_canned_label)
+
         # --- Status indicators (Navigation Tab) ---
         self.nav_imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
         self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
@@ -834,6 +839,9 @@ class AUVControlGUI(QWidget):
         self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
         if hasattr(self, 'nav_servo_status_label'):
             self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
+
+        if hasattr(self, 'nav_last_canned_label'):
+            self.nav_last_canned_label.setText(f"LAST CANNED: {self.ros_node.last_command}")
 
         if "NOMINAL" in servo_status.upper():
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")  # Green
