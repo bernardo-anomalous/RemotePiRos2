@@ -341,7 +341,7 @@ class AUVControlGUI(QWidget):
         # Right side: joystick
         nav_right_layout = QVBoxLayout()
         self.navigation_joystick = VirtualJoystickWidget()
-        self.navigation_joystick.setFixedSize(250, 250)
+        # Use the same callback logic as the Operations tab joystick
         self.navigation_joystick.callback = self.joystick_callback
         nav_right_layout.addWidget(self.navigation_joystick)
 
@@ -417,18 +417,27 @@ class AUVControlGUI(QWidget):
         # --- Status indicators (Navigation Tab) ---
         self.nav_imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
         self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.nav_imu_health_label.setFixedHeight(30)
+        self.nav_imu_health_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.nav_servo_status_label = QLabel("SERVO DRIVER STATUS: UNKNOWN")
         self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
-        self.nav_servo_status_label.setWordWrap(True)
+        # Prevent wrapping so the joystick layout doesn't shift
+        self.nav_servo_status_label.setWordWrap(False)
+        self.nav_servo_status_label.setFixedHeight(30)
+        self.nav_servo_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.nav_roll_pid_status_label = QLabel("ROLL PID: UNKNOWN")
         self.nav_roll_pid_status_label.setStyleSheet(
             "font-size: 18px; color: #AAAAAA;"
         )
+        self.nav_roll_pid_status_label.setFixedHeight(30)
+        self.nav_roll_pid_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.nav_pitch_pid_status_label = QLabel("PITCH PID: UNKNOWN")
         self.nav_pitch_pid_status_label.setStyleSheet(
             "font-size: 18px; color: #AAAAAA;"
         )
+        self.nav_pitch_pid_status_label.setFixedHeight(30)
+        self.nav_pitch_pid_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         nav_right_layout.addWidget(self.nav_imu_health_label)
         nav_right_layout.addWidget(self.nav_servo_status_label)
@@ -590,9 +599,12 @@ class AUVControlGUI(QWidget):
 
         
     def toggle_sticky_mode(self):
-        self.virtual_joystick.sticky_mode = not self.virtual_joystick.sticky_mode
+        new_mode = not self.virtual_joystick.sticky_mode
+        self.virtual_joystick.sticky_mode = new_mode
+        if hasattr(self, 'navigation_joystick'):
+            self.navigation_joystick.sticky_mode = new_mode
 
-        if self.virtual_joystick.sticky_mode:
+        if new_mode:
             self.btn_toggle_sticky.setText("STICKY MODE: ON")
             self.btn_toggle_sticky.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
         else:
@@ -854,7 +866,10 @@ class AUVControlGUI(QWidget):
         servo_status = self.ros_node.servo_driver_status
         self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
         if hasattr(self, 'nav_servo_status_label'):
-            self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
+            short_status = servo_status
+            if len(short_status) > 30:
+                short_status = short_status[:27] + "..."
+            self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {short_status}")
 
         if hasattr(self, 'nav_last_canned_label'):
             self.nav_last_canned_label.setText(f"LAST CANNED: {self.ros_node.last_command}")
