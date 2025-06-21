@@ -235,8 +235,9 @@ class AttitudeIndicator(QWidget):
         painter.drawLine(width - marker_length, center_y, width - marker_margin, center_y)
 
         # === Roll Arc & Marker ===
-        arc_radius = width * 0.27
-        arc_center = QPointF(width - arc_radius - 20, center_y)
+        # Use a fixed geometry so the arc remains visible across widget sizes
+        arc_radius = 140
+        arc_center = QPointF(260, center_y)
         arc_rect = QRectF(arc_center.x() - arc_radius,
                         arc_center.y() - arc_radius,
                         arc_radius * 2,
