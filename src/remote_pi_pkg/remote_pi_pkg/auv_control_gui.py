@@ -380,6 +380,35 @@ class AUVControlGUI(QWidget):
         self.btn_cruise_toggle.clicked.connect(self.toggle_cruise)
         nav_right_layout.addWidget(self.btn_cruise_toggle)
 
+        # --- Cruise Interval Controls ---
+        cruise_interval_row = QHBoxLayout()
+        cruise_interval_row.addWidget(QLabel("CRUISE INTERVAL"))
+
+        self.cruise_interval_spin = QDoubleSpinBox()
+        self.cruise_interval_spin.setRange(0.5, 10.0)
+        self.cruise_interval_spin.setSingleStep(0.5)
+        self.cruise_interval_spin.setValue(2.0)
+        self.cruise_interval_spin.hide()
+
+        self.cruise_interval_label = QLabel(f"{self.cruise_interval_spin.value():.1f}s")
+        self.cruise_interval_label.setAlignment(Qt.AlignCenter)
+        self.cruise_interval_label.setStyleSheet("font-size: 24px;")
+
+        self.btn_cruise_interval_decrease = QPushButton("-")
+        self.btn_cruise_interval_increase = QPushButton("+")
+
+        self.btn_cruise_interval_decrease.clicked.connect(self.cruise_interval_spin.stepDown)
+        self.btn_cruise_interval_increase.clicked.connect(self.cruise_interval_spin.stepUp)
+        self.cruise_interval_spin.valueChanged.connect(self.update_cruise_interval_label)
+
+        cruise_interval_row.addWidget(self.btn_cruise_interval_decrease)
+        cruise_interval_row.addWidget(self.cruise_interval_label)
+        cruise_interval_row.addWidget(self.btn_cruise_interval_increase)
+
+        nav_right_layout.addLayout(cruise_interval_row)
+        nav_right_layout.addWidget(self.cruise_interval_spin)
+        self.ros_node.cruise_delay = self.cruise_interval_spin.value()
+
         # Display the last canned message that cruise mode will repeat
         self.nav_last_canned_label = QLabel("LAST CANNED: NONE")
         self.nav_last_canned_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
@@ -641,6 +670,10 @@ class AUVControlGUI(QWidget):
 
     def update_nav_duration_label(self):
         self.navigation_duration_label.setText(f"{self.navigation_duration_spin.value():.1f}s")
+
+    def update_cruise_interval_label(self):
+        self.cruise_interval_label.setText(f"{self.cruise_interval_spin.value():.1f}s")
+        self.ros_node.cruise_delay = self.cruise_interval_spin.value()
 
     def joystick_callback(self, norm_x, norm_y):
         max_angle = 15.0  # or change to 45.0 for tighter control
