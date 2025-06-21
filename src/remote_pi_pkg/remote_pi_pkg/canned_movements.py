@@ -100,7 +100,7 @@ class CannedMovements:
         )
 
     def canned_1_low_thrust(self, duration_scale: float = 1.0): # minimum thrust
-        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
+        base_durations = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
