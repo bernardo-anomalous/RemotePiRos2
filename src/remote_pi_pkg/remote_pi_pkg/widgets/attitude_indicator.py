@@ -16,8 +16,8 @@ class AttitudeIndicator(QWidget):
         self.setMinimumWidth(200)
 
         # === Customizable Style Parameters ===
-        # Ratio of the widget width used for half the triangle base
-        self.base_width_ratio = 0.25
+        self.base_width = 140
+        # Triangle base half-width
         self.pitch_effect_scale = 1.0
         self.max_angle = 90.0  # Maximum pitch/roll for normalization
 
@@ -175,8 +175,8 @@ class AttitudeIndicator(QWidget):
         pitch_intensity = abs(norm_pitch)
 
         # === Triangle Geometry ===
-        base_half_width = width * self.base_width_ratio
-        equilateral_height = base_half_width * (3 ** 0.5)
+        base_half_width = self.base_width
+        equilateral_height = base_half_width * (3**0.5)
         nose_y = -equilateral_height * norm_pitch
 
         point_nose = QPointF(0, nose_y)
@@ -196,7 +196,7 @@ class AttitudeIndicator(QWidget):
 
         # === Nose Line to Pitch Scale ===
         nose_tip = transform.map(point_nose)
-        line_end_x = width - base_half_width
+        line_end_x = width - 140
         line_end = QPointF(line_end_x, nose_tip.y())
 
         painter.setPen(QPen(QColor("#00FF00"), 1, Qt.DashLine))
@@ -229,13 +229,10 @@ class AttitudeIndicator(QWidget):
 
         # === Horizon Markers ===
         painter.setPen(QPen(self.horizon_color, 2))
-        marker_margin = width * 0.05
-        marker_length = width * 0.15
-        painter.drawLine(marker_margin, center_y, marker_length, center_y)
-        painter.drawLine(width - marker_length, center_y, width - marker_margin, center_y)
+        painter.drawLine(10, center_y, 30, center_y)
+        painter.drawLine(width - 30, center_y, width - 10, center_y)
 
         # === Roll Arc & Marker ===
-        # Use a fixed geometry so the arc remains visible across widget sizes
         arc_radius = 140
         arc_center = QPointF(260, center_y)
         arc_rect = QRectF(arc_center.x() - arc_radius,
@@ -262,6 +259,42 @@ class AttitudeIndicator(QWidget):
         painter.setPen(QColor("#FF4500"))
         painter.setFont(QFont("Courier New", 12, QFont.Bold))
         painter.drawText(marker_pos + QPointF(-70, 5), f"{self.roll:.1f}°")
+
+        # === Depth Gauge ===
+        if hasattr(self, 'current_depth') and hasattr(self, 'target_depth'):
+            deadband = 0.01
+            target = self.target_depth
+
+            if abs(target) < deadband:
+                target = 0.0
+
+            if target != 0.0:
+                smoothing_factor = 0.1
+                self.current_depth += (target - self.current_depth) * smoothing_factor
+            else:
+                self.current_depth = 0.0
+
+            font = QFont("Courier", 14)
+            painter.setFont(font)
+            painter.setPen(QColor("#00FFFF"))
+
+            current = round(self.current_depth, 2)
+            previous = round(current - 1, 2)
+            next_val = round(current + 1, 2)
+
+            x_offset = self.width() - 80
+            y_center_text = 70
+
+            painter.setOpacity(0.3)
+            painter.drawText(x_offset, y_center_text - 20, f"{previous}m")
+
+            painter.setOpacity(1.0)
+            painter.drawText(x_offset, y_center_text, f"{current}m")
+
+            painter.setOpacity(0.3)
+            painter.drawText(x_offset, y_center_text + 20, f"{next_val}m")
+
+            painter.setOpacity(1.0)
 
         # === Moving Acceleration Dot + Ghost Trail ===
         fast_factor = 0.4
@@ -309,42 +342,7 @@ class AttitudeIndicator(QWidget):
             dot_radius * 2
         )
 
-        # === Depth Gauge ===
-        if hasattr(self, 'current_depth') and hasattr(self, 'target_depth'):
-            deadband = 0.01
-            target = self.target_depth
-
-            if abs(target) < deadband:
-                target = 0.0
-
-            if target != 0.0:
-                smoothing_factor = 0.1
-                self.current_depth += (target - self.current_depth) * smoothing_factor
-            else:
-                self.current_depth = 0.0
-
-            font = QFont("Courier", 14)
-            painter.setFont(font)
-            painter.setPen(QColor("#00FFFF"))
-
-            base = math.floor(self.current_depth)
-            fraction = self.current_depth - base
-            values = [base - 1, base, base + 1]
-
-            x_offset = width - width * 0.15
-            y_center = height * 0.15
-            spacing = height * 0.05
-
-            for i, val in enumerate(values):
-                offset = (i - 1) - fraction
-                y_pos = y_center + offset * spacing
-                fade = max(0.3, 1 - abs(offset) * 0.7)
-                painter.setOpacity(fade)
-                painter.drawText(x_offset, y_pos, f"{val:.2f}m")
-
-            painter.setOpacity(1.0)
-
-
+        
     def set_depth(self, depth_value):
         self.target_depth = depth_value  # Target value from the topic
-        self.update()
+        #print(f"Depth updated: {depth_value}")
