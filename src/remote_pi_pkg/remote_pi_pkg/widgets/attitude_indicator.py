@@ -16,8 +16,8 @@ class AttitudeIndicator(QWidget):
         self.setMinimumWidth(200)
 
         # === Customizable Style Parameters ===
-        self.base_width = 140
-        # Triangle base half-width
+        # Ratio of the widget width used for half the triangle base
+        self.base_width_ratio = 0.25
         self.pitch_effect_scale = 1.0
         self.max_angle = 90.0  # Maximum pitch/roll for normalization
 
@@ -175,8 +175,8 @@ class AttitudeIndicator(QWidget):
         pitch_intensity = abs(norm_pitch)
 
         # === Triangle Geometry ===
-        base_half_width = self.base_width
-        equilateral_height = base_half_width * (3**0.5)
+        base_half_width = width * self.base_width_ratio
+        equilateral_height = base_half_width * (3 ** 0.5)
         nose_y = -equilateral_height * norm_pitch
 
         point_nose = QPointF(0, nose_y)
@@ -196,7 +196,7 @@ class AttitudeIndicator(QWidget):
 
         # === Nose Line to Pitch Scale ===
         nose_tip = transform.map(point_nose)
-        line_end_x = width - 140
+        line_end_x = width - base_half_width
         line_end = QPointF(line_end_x, nose_tip.y())
 
         painter.setPen(QPen(QColor("#00FF00"), 1, Qt.DashLine))
@@ -229,12 +229,14 @@ class AttitudeIndicator(QWidget):
 
         # === Horizon Markers ===
         painter.setPen(QPen(self.horizon_color, 2))
-        painter.drawLine(10, center_y, 30, center_y)
-        painter.drawLine(width - 30, center_y, width - 10, center_y)
+        marker_margin = width * 0.05
+        marker_length = width * 0.15
+        painter.drawLine(marker_margin, center_y, marker_length, center_y)
+        painter.drawLine(width - marker_length, center_y, width - marker_margin, center_y)
 
         # === Roll Arc & Marker ===
-        arc_radius = 140
-        arc_center = QPointF(260, center_y)
+        arc_radius = width * 0.27
+        arc_center = QPointF(width - arc_radius - 20, center_y)
         arc_rect = QRectF(arc_center.x() - arc_radius,
                         arc_center.y() - arc_radius,
                         arc_radius * 2,
@@ -328,9 +330,9 @@ class AttitudeIndicator(QWidget):
             fraction = self.current_depth - base
             values = [base - 1, base, base + 1]
 
-            x_offset = self.width() - 80
-            y_center = 70
-            spacing = 20
+            x_offset = width - width * 0.15
+            y_center = height * 0.15
+            spacing = height * 0.05
 
             for i, val in enumerate(values):
                 offset = (i - 1) - fraction
