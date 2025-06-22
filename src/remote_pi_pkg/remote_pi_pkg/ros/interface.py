@@ -117,6 +117,18 @@ class ROSInterface(Node):
         self.cruise_timer = None
         self.last_servo_status_word = None
         self.auto_pid_reengage = True
+
+    def restart_cruise_timer(self):
+        """Restart the cruise timer using the current delay."""
+        if self.cruise_timer:
+            self.cruise_timer.cancel()
+            self.cruise_timer = None
+
+        if self.cruise_enabled and self.last_canned_callback and \
+                self.last_servo_status_word == "nominal":
+            self.cruise_timer = threading.Timer(
+                self.cruise_delay, self.execute_cruise)
+            self.cruise_timer.start()
         
     def acceleration_callback(self, msg: Vector3):
         #print(f"[ROSInterface] Received accel: x={msg.x}, y={msg.y}, z={msg.z}")
