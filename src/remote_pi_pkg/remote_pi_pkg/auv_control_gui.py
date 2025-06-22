@@ -708,6 +708,8 @@ class AUVControlGUI(QWidget):
     def update_cruise_interval_label(self):
         self.cruise_interval_label.setText(f"{self.cruise_interval_spin.value():.1f}s")
         self.ros_node.cruise_delay = self.cruise_interval_spin.value()
+        if self.ros_node.cruise_enabled:
+            self.ros_node.restart_cruise_timer()
 
     def joystick_callback(self, norm_x, norm_y):
         max_angle = 15.0  # or change to 45.0 for tighter control
