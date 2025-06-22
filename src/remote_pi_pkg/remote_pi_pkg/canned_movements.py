@@ -491,7 +491,7 @@ class CannedMovements:
                              0.0, 135.0, 180.0, 135.0, # up and glide ### end thrust 3
                              0.0, 120.0, 180.0, 150.0, # Pitch Down
                              90.0, 120.0, 90.0, 150.0, #swing to glide
-                             90.0, 135.0, 90.0, 135.0, #glide ##24 movements
+                             90.0, 135.0, 90.0, 135.0], #glide ##24 movements
             'durations': adjusted,
             'easing_algorithms': [
                 'EXPONENTIAL', 'CUBIC', 'CUBIC', 'EXPONENTIAL',
