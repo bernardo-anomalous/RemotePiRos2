@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QTextEdit, QLabel, QTabWidget, QDoubleSpinBox,
     QScrollArea, QSizePolicy
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import re
 from PyQt5.QtGui import QFont
 
@@ -18,6 +18,10 @@ import time
 import os
 
 class AUVControlGUI(QWidget):
+    lifecycle_update_signal = pyqtSignal()
+    cruise_enabled_signal = pyqtSignal(bool)
+    cruise_delay_signal = pyqtSignal(float)
+    step_duration_signal = pyqtSignal(float)
     def __init__(self, ros_node):
         super().__init__()
         self.ros_node = ros_node
@@ -118,11 +122,18 @@ class AUVControlGUI(QWidget):
         # === BUILD THE GUI ===
         self.init_ui()
 
-        # Allow ROS node to trigger UI updates when lifecycle state changes
-        self.ros_node.lifecycle_update_callback = self.update_lifecycle_buttons
-        self.ros_node.cruise_enabled_update_callback = self.on_cruise_enabled_update
-        self.ros_node.cruise_delay_update_callback = self.on_cruise_delay_update
-        self.ros_node.step_duration_update_callback = self.on_step_duration_update
+        # Connect cross-thread signals to their respective handlers. Emitting
+        # these signals from ROS callbacks ensures updates run on the GUI
+        # thread without direct cross-thread widget access.
+        self.lifecycle_update_signal.connect(self.update_lifecycle_buttons)
+        self.cruise_enabled_signal.connect(self.on_cruise_enabled_update)
+        self.cruise_delay_signal.connect(self.on_cruise_delay_update)
+        self.step_duration_signal.connect(self.on_step_duration_update)
+
+        self.ros_node.lifecycle_update_callback = self.lifecycle_update_signal.emit
+        self.ros_node.cruise_enabled_update_callback = self.cruise_enabled_signal.emit
+        self.ros_node.cruise_delay_update_callback = self.cruise_delay_signal.emit
+        self.ros_node.step_duration_update_callback = self.step_duration_signal.emit
 
 
 
