@@ -118,11 +118,27 @@ class AUVControlGUI(QWidget):
         # === BUILD THE GUI ===
         self.init_ui()
 
-        # Allow ROS node to trigger UI updates when lifecycle state changes
-        self.ros_node.lifecycle_update_callback = self.update_lifecycle_buttons
-        self.ros_node.cruise_enabled_update_callback = self.on_cruise_enabled_update
-        self.ros_node.cruise_delay_update_callback = self.on_cruise_delay_update
-        self.ros_node.step_duration_update_callback = self.on_step_duration_update
+        # Allow ROS node to trigger UI updates via the Qt event loop. Wrapping
+        # these callbacks with QTimer.singleShot ensures that the GUI is
+        # modified only from the main thread.
+        self.ros_node.lifecycle_update_callback = (
+            lambda: QTimer.singleShot(0, self.update_lifecycle_buttons)
+        )
+        self.ros_node.cruise_enabled_update_callback = (
+            lambda enabled: QTimer.singleShot(
+                0, lambda e=enabled: self.on_cruise_enabled_update(e)
+            )
+        )
+        self.ros_node.cruise_delay_update_callback = (
+            lambda delay: QTimer.singleShot(
+                0, lambda d=delay: self.on_cruise_delay_update(d)
+            )
+        )
+        self.ros_node.step_duration_update_callback = (
+            lambda duration: QTimer.singleShot(
+                0, lambda d=duration: self.on_step_duration_update(d)
+            )
+        )
 
 
 
