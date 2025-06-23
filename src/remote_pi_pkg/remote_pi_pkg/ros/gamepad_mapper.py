@@ -3,6 +3,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Float32, Bool
 from auv_custom_interfaces.msg import ServoMovementCommand
+from remote_pi_pkg import CannedMovements
 
 
 class GamepadMapper(Node):
@@ -12,8 +13,12 @@ class GamepadMapper(Node):
         super().__init__('gamepad_mapper')
         self.target_roll_pub = self.create_publisher(Float32, 'target_roll', 10)
         self.target_pitch_pub = self.create_publisher(Float32, 'target_pitch', 10)
+        # Publishers for manual and canned servo commands
         self.servo_pub = self.create_publisher(
             ServoMovementCommand, 'servo_interpolation_commands', 10)
+        self.canned_pub = self.servo_pub
+        self.wing_pid_pub = self.create_publisher(Bool, 'wing_pid_active', 10)
+        self.tail_pid_pub = self.create_publisher(Bool, 'tail_pid_active', 10)
         self.cruise_enabled_pub = self.create_publisher(Bool, 'cruise_enabled', 10)
         self.cruise_delay_pub = self.create_publisher(Float32, 'cruise_delay', 10)
         self.duration_factor_pub = self.create_publisher(
@@ -22,7 +27,14 @@ class GamepadMapper(Node):
         self.last_buttons = []
         self.cruise_enabled = False
         self.cruise_delay = 2.0
-        self.duration_factor = 1.0
+        self.canned_duration_factor = 1.0
+        self.roll_pid_enabled = True
+        self.pid_reattach_pending = False
+        self.tail_pid_enabled = True
+        self.tail_pid_reattach_pending = False
+        self.last_command = ""
+
+        self.canned_movements = CannedMovements(self)
 
     def joy_callback(self, msg: Joy):
         # axes[2] -> roll, axes[3] -> pitch
@@ -38,20 +50,37 @@ class GamepadMapper(Node):
         def pressed(index: int) -> bool:
             return len(msg.buttons) > index and msg.buttons[index] and not self.last_buttons[index]
 
-        if pressed(0):  # A button -> simple canned 1
-            self.send_servo_command([0, 1, 2, 3], [90.0, 180.0, 90.0, 90.0])
-        if pressed(1):  # B button -> simple canned 2
-            self.send_servo_command([0, 1, 2, 3], [0.0, 165.0, 180.0, 105.0])
-        if pressed(2):  # X button -> toggle cruise
+        canned_methods = [
+            self.canned_movements.canned_1_low_thrust,
+            self.canned_movements.canned_2_medium_thrust,
+            self.canned_movements.canned_3_high_thrust,
+            self.canned_movements.canned_4_forward_right,
+            self.canned_movements.canned_5_forward_left,
+            self.canned_movements.canned_6_hard_right,
+            self.canned_movements.canned_7_hard_left,
+            self.canned_movements.canned_8_tail_thrust,
+            self.canned_movements.canned_9_SWING_UP,
+            self.canned_movements.canned_10_DOWN_TO_GLIDE,
+            self.canned_movements.canned_11_UP_TO_GLIDE,
+            self.canned_movements.canned_12_SWING_DOWN,
+            self.canned_movements.canned_13_ACCEL,
+        ]
+
+        for idx, method in enumerate(canned_methods):
+            if pressed(idx):
+                method()
+
+        control_idx = len(canned_methods)
+        if pressed(control_idx):
             self.cruise_enabled = not self.cruise_enabled
             self.cruise_enabled_pub.publish(Bool(data=self.cruise_enabled))
-        if pressed(3):  # Y button -> increase duration factor
-            self.duration_factor += 0.2
-            self.duration_factor_pub.publish(Float32(data=self.duration_factor))
-        if pressed(4):  # LB -> decrease cruise delay
+        if pressed(control_idx + 1):
+            self.canned_duration_factor += 0.2
+            self.duration_factor_pub.publish(Float32(data=self.canned_duration_factor))
+        if pressed(control_idx + 2):
             self.cruise_delay = max(0.5, self.cruise_delay - 0.5)
             self.cruise_delay_pub.publish(Float32(data=self.cruise_delay))
-        if pressed(5):  # RB -> increase cruise delay
+        if pressed(control_idx + 3):
             self.cruise_delay += 0.5
             self.cruise_delay_pub.publish(Float32(data=self.cruise_delay))
 
@@ -71,6 +100,12 @@ class GamepadMapper(Node):
         msg.operational_mode = 'MANUAL'
         msg.priority = 0
         self.servo_pub.publish(msg)
+
+    def set_pid(self, activate: bool):
+        self.wing_pid_pub.publish(Bool(data=activate))
+
+    def set_tail_pid(self, activate: bool):
+        self.tail_pid_pub.publish(Bool(data=activate))
 
 
 def main(args=None):
