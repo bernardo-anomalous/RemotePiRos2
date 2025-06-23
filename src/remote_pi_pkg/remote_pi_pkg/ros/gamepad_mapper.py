@@ -70,7 +70,7 @@ class GamepadMapper(Node):
             
             7: self.increase_step_duration,                     # Right Trigger
             
-            8: 8: self.toggle_cruise,                              # left select
+            8: self.toggle_cruise,                              # left select
             9: self._make_canned_handler(
                 self.canned_movements.canned_10_DOWN_TO_GLIDE),   # Stick press R
             10: self._make_canned_handler(
