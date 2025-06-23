@@ -720,6 +720,10 @@ class AUVControlGUI(QWidget):
     def quit_app(self):
         QApplication.quit()
 
+    def closeEvent(self, event):
+        QApplication.quit()
+        event.accept()
+
     def increase_duration(self):
         self.ros_node.canned_duration_factor += self.ros_node.DURATION_STEP
         #self.ros_node.get_logger().info(f"DURATION FACTOR INCREASED: {self.ros_node.canned_duration_factor:.2f}")
