@@ -118,6 +118,13 @@ class ROSInterface(Node):
         self.create_subscription(Float32, 'canned_duration_factor',
                                  self.duration_factor_callback, 10)
 
+        self.create_subscription(
+            ServoMovementCommand,
+            'servo_interpolation_commands',
+            self.servo_command_callback,
+            10,
+        )
+
         # --- Cruise Control ---
         self.cruise_enabled = False
         self.cruise_delay = 2.0  # seconds
@@ -288,6 +295,7 @@ class ROSInterface(Node):
 
         msg = ServoMovementCommand()
         msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = self.get_name()
         msg.servo_numbers = canned_commands['servo_numbers']
         msg.target_angles = canned_commands['target_angles']
         msg.durations = canned_commands['durations']
@@ -323,6 +331,7 @@ class ROSInterface(Node):
 
         msg = ServoMovementCommand()
         msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = self.get_name()
         msg.servo_numbers = self.canned_servo_numbers
         msg.target_angles = self.canned_target_angles[step_index]
         msg.durations = [float(duration)]
@@ -383,6 +392,14 @@ class ROSInterface(Node):
             #self.get_logger().info(f"EULER ANGLES RECEIVED: {self.euler}")
         except Exception as e:
             self.get_logger().error(f"Failed to parse euler data: {e}")
+
+    def servo_command_callback(self, msg: ServoMovementCommand):
+        """Track the latest received servo command."""
+        if msg.header.frame_id and msg.header.frame_id == self.get_name():
+            return
+        self.last_command = (
+            f"{msg.movement_type} CMD RECEIVED @ {msg.header.stamp}"
+        )
             
 
     def get_lifecycle_state(self):
