@@ -110,6 +110,14 @@ class ROSInterface(Node):
         self.current_acceleration = Vector3()
         self.create_subscription(Vector3, 'acceleration/processed', self.acceleration_callback, 10)
 
+        # Subscriptions for cruise control settings coming from the gamepad
+        self.create_subscription(Bool, 'cruise_enabled',
+                                 self.cruise_enabled_callback, 10)
+        self.create_subscription(Float32, 'cruise_delay',
+                                 self.cruise_delay_callback, 10)
+        self.create_subscription(Float32, 'canned_duration_factor',
+                                 self.duration_factor_callback, 10)
+
         # --- Cruise Control ---
         self.cruise_enabled = False
         self.cruise_delay = 2.0  # seconds
@@ -435,6 +443,25 @@ class ROSInterface(Node):
     def tail_pid_status_callback(self, msg):
         self.tail_pid_enabled = msg.data
         # Optionally, emit a signal to the GUI if needed
+
+    def cruise_enabled_callback(self, msg: Bool):
+        """Handle updates to the cruise enabled flag."""
+        self.cruise_enabled = msg.data
+        if self.cruise_enabled:
+            self.restart_cruise_timer()
+        elif self.cruise_timer:
+            self.cruise_timer.cancel()
+            self.cruise_timer = None
+
+    def cruise_delay_callback(self, msg: Float32):
+        """Handle updates to the cruise delay."""
+        self.cruise_delay = msg.data
+        if self.cruise_enabled:
+            self.restart_cruise_timer()
+
+    def duration_factor_callback(self, msg: Float32):
+        """Handle updates to canned duration scaling."""
+        self.canned_duration_factor = msg.data
         
     def check_lifecycle_future(self):
         if self.lifecycle_future is not None and self.lifecycle_future.done():
