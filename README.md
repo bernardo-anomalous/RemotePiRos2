@@ -42,7 +42,7 @@ RemotePiRos2/
    ./launch_gui.sh
    ```
 
-The script sources `/opt/ros/jazzy/setup.bash` and the workspace's `install/setup.bash`, then runs `ros2 run remote_pi_pkg auv_control`. The `auv_control` entry point automatically starts `joy_linux` and the internal gamepad mapper so joystick input is available without additional commands.
+The script sources `/opt/ros/jazzy/setup.bash` and the workspace's `install/setup.bash`, then runs `ros2 run remote_pi_pkg auv_control`. The `auv_control` entry point automatically starts the standard `joy` node and the internal gamepad mapper so joystick input is available without additional commands.
 
 ## ROS 2 overview
 

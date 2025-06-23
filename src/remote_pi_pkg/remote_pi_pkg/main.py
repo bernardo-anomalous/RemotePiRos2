@@ -20,7 +20,7 @@ def main():
     rclpy.init()
 
     # Launch input nodes alongside the GUI
-    joy_proc = subprocess.Popen(['ros2', 'run', 'joy_linux', 'joy_linux_node'])
+    joy_proc = subprocess.Popen(['ros2', 'run', 'joy', 'joy_node'])
     mapper_proc = subprocess.Popen(['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'])
     exit_code = 0
     try:

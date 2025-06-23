@@ -21,6 +21,7 @@ class ROSInterface(Node):
         self.mode = "OPERATION"
         self.canned_duration_factor = 1.0
         self.DURATION_STEP = 0.2  # Adjustable increment
+        self.step_duration = 1.0  # Duration scale used by gamepad actions
 
         # Predefined servo positions for the canned wing cycle
         self.canned_servo_numbers = [0, 1, 2, 3]
@@ -117,6 +118,8 @@ class ROSInterface(Node):
                                  self.cruise_delay_callback, 10)
         self.create_subscription(Float32, 'canned_duration_factor',
                                  self.duration_factor_callback, 10)
+        self.create_subscription(Float32, 'step_duration',
+                                 self.step_duration_callback, 10)
 
         self.create_subscription(
             ServoMovementCommand,
@@ -469,16 +472,44 @@ class ROSInterface(Node):
         elif self.cruise_timer:
             self.cruise_timer.cancel()
             self.cruise_timer = None
+        if hasattr(self, 'cruise_enabled_update_callback'):
+            try:
+                self.cruise_enabled_update_callback(self.cruise_enabled)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Cruise enabled GUI callback failed: {e}")
 
     def cruise_delay_callback(self, msg: Float32):
         """Handle updates to the cruise delay."""
         self.cruise_delay = msg.data
         if self.cruise_enabled:
             self.restart_cruise_timer()
+        if hasattr(self, 'cruise_delay_update_callback'):
+            try:
+                self.cruise_delay_update_callback(self.cruise_delay)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Cruise delay GUI callback failed: {e}")
 
     def duration_factor_callback(self, msg: Float32):
         """Handle updates to canned duration scaling."""
         self.canned_duration_factor = msg.data
+        if hasattr(self, 'duration_factor_update_callback'):
+            try:
+                self.duration_factor_update_callback(self.canned_duration_factor)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Duration factor GUI callback failed: {e}")
+
+    def step_duration_callback(self, msg: Float32):
+        """Handle updates to the step duration from the gamepad."""
+        self.step_duration = msg.data
+        if hasattr(self, 'step_duration_update_callback'):
+            try:
+                self.step_duration_update_callback(self.step_duration)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Step duration GUI callback failed: {e}")
         
     def check_lifecycle_future(self):
         if self.lifecycle_future is not None and self.lifecycle_future.done():
