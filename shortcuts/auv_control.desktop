@@ -4,7 +4,7 @@ Type=Application
 
 Name=Auv Control Interface
 Comment= Retro-Futuristic GUI for AUV
-Exec=bash -c "source /opt/ros/jazzy/setup.bash && source /home/b/RemotePiRos2/install/setup.bash && ros2 run remote_pi_pkg main > /home/b/auv_gui.log 2>&1"
+Exec=bash -c "source /opt/ros/jazzy/setup.bash && source /home/b/RemotePiRos2/install/setup.bash && ros2 run remote_pi_pkg auv_control > /home/b/auv_gui.log 2>&1"
 Icon=utilities-terminal
 Terminal=true
 

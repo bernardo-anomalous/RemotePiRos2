@@ -1,8 +1,9 @@
 import os
+import subprocess
 
 # === Enable OpenGL acceleration ===
-os.environ['QT_QPA_PLATFORM'] = 'xcb'               # Try 'eglfs' if 'xcb' gives issues
-os.environ['QT_OPENGL'] = 'egl'                     # Options: 'egl', 'desktop', or 'angle'
+os.environ['QT_QPA_PLATFORM'] = 'xcb'  # Try 'eglfs' if 'xcb' gives issues
+os.environ['QT_OPENGL'] = 'egl'        # Options: 'egl', 'desktop', or 'angle'
 
 import sys
 import threading
@@ -18,20 +19,31 @@ def main():
 
     rclpy.init()
 
-    # Start ROS node
-    ros_node = ROSInterface()
-    ros_thread = threading.Thread(target=ros_spin, args=(ros_node,), daemon=True)
-    ros_thread.start()
+    # Launch input nodes alongside the GUI
+    joy_proc = subprocess.Popen(['ros2', 'run', 'joy_linux', 'joy_linux_node'])
+    mapper_proc = subprocess.Popen(['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'])
+    exit_code = 0
+    try:
+        # Start ROS node
+        ros_node = ROSInterface()
+        ros_thread = threading.Thread(target=ros_spin, args=(ros_node,), daemon=True)
+        ros_thread.start()
 
-    # Start Qt GUI
-    app = QApplication(sys.argv)
-    gui = AUVControlGUI(ros_node)
-    gui.show()
-    sys.exit(app.exec_())
+        # Start Qt GUI
+        app = QApplication(sys.argv)
+        gui = AUVControlGUI(ros_node)
+        gui.show()
+        exit_code = app.exec_()
+    finally:
+        # Cleanup
+        ros_node.destroy_node()
+        rclpy.shutdown()
+        mapper_proc.terminate()
+        joy_proc.terminate()
+        mapper_proc.wait()
+        joy_proc.wait()
 
-    # Cleanup (not reached due to sys.exit, but good form)
-    ros_node.destroy_node()
-    rclpy.shutdown()
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
