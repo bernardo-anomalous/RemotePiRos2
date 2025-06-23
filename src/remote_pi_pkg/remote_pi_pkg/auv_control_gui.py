@@ -145,7 +145,8 @@ class AUVControlGUI(QWidget):
         # === NOW SAFELY START THE TIMER ===
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
-        self.status_update_timer.start(500)
+        # Faster refresh for status information
+        self.status_update_timer.start(100)
         # Visual update timer (runs at 60Hz)
         self.visual_update_timer = QTimer()
         self.visual_update_timer.timeout.connect(self.update_visuals)
