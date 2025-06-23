@@ -123,7 +123,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'THRUST_UNIT_1',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -155,7 +155,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'THRUST_UNIT_2',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -187,7 +187,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'THRUST_UNIT_3',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -373,7 +373,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'SWING_UP',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -399,7 +399,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'DOWN_TO_GLIDE',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -425,7 +425,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'UP_TO_GLIDE',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -451,7 +451,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'SWING_DOWN',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -503,7 +503,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 24,
             'easing_out_factors': [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'ACCELERATION',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
