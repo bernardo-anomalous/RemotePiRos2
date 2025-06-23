@@ -626,6 +626,11 @@ class AUVControlGUI(QWidget):
         self.update_lifecycle_buttons()
         self.update_pid_button_state()
 
+        # === Track last displayed status values ===
+        self.last_servo_status = None
+        self.last_roll_pid_state = None
+        self.last_pitch_pid_state = None
+
 
         
     def adjust_control_status_height(self):
@@ -939,58 +944,48 @@ class AUVControlGUI(QWidget):
                 self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
             
         servo_status = self.ros_node.servo_driver_status
-        self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
-        if hasattr(self, 'nav_servo_status_label'):
-            short_status = servo_status
-            if len(short_status) > 30:
-                short_status = short_status[:27] + "..."
-            self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {short_status}")
+        if servo_status != getattr(self, 'last_servo_status', None):
+            self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
+            if hasattr(self, 'nav_servo_status_label'):
+                short_status = servo_status
+                if len(short_status) > 30:
+                    short_status = short_status[:27] + "..."
+                self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {short_status}")
+
+            if "NOMINAL" in servo_status.upper():
+                color = "#00FF00"
+            elif "BUSY" in servo_status.upper():
+                color = "#FFA500"
+            elif "UNKNOWN" in servo_status.upper():
+                color = "#AAAAAA"
+            else:
+                color = "#FF4500"
+            self.servo_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
+            if hasattr(self, 'nav_servo_status_label'):
+                self.nav_servo_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
+
+            self.last_servo_status = servo_status
 
         if hasattr(self, 'nav_last_canned_label'):
             movement = self.ros_node.last_movement_type
             self.nav_last_canned_label.setText(f"LAST CANNED: {movement}")
 
-        if "NOMINAL" in servo_status.upper():
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")  # Green
-            if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")
-        elif "BUSY" in servo_status.upper():
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Yellow / Orange
-            if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #FFA500;")
-        elif "UNKNOWN" in servo_status.upper():
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")  # Gray
-            if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
-        else:
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red for anything else (errors, faults)
-            if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")
-
         # === Update PID Status Labels (Navigation Tab) ===
         if hasattr(self, 'nav_roll_pid_status_label'):
-            if self.ros_node.roll_pid_enabled:
-                self.nav_roll_pid_status_label.setText("ROLL PID: ACTIVE")
-                self.nav_roll_pid_status_label.setStyleSheet(
-                    "font-size: 18px; color: #00FF00;"
-                )
-            else:
-                self.nav_roll_pid_status_label.setText("ROLL PID: INACTIVE")
-                self.nav_roll_pid_status_label.setStyleSheet(
-                    "font-size: 18px; color: #FF4500;"
-                )
+            current_state = "ACTIVE" if self.ros_node.roll_pid_enabled else "INACTIVE"
+            if current_state != getattr(self, 'last_roll_pid_state', None):
+                color = "#00FF00" if self.ros_node.roll_pid_enabled else "#FF4500"
+                self.nav_roll_pid_status_label.setText(f"ROLL PID: {current_state}")
+                self.nav_roll_pid_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
+                self.last_roll_pid_state = current_state
 
         if hasattr(self, 'nav_pitch_pid_status_label'):
-            if self.ros_node.tail_pid_enabled:
-                self.nav_pitch_pid_status_label.setText("PITCH PID: ACTIVE")
-                self.nav_pitch_pid_status_label.setStyleSheet(
-                    "font-size: 18px; color: #00FF00;"
-                )
-            else:
-                self.nav_pitch_pid_status_label.setText("PITCH PID: INACTIVE")
-                self.nav_pitch_pid_status_label.setStyleSheet(
-                    "font-size: 18px; color: #FF4500;"
-                )
+            pitch_state = "ACTIVE" if self.ros_node.tail_pid_enabled else "INACTIVE"
+            if pitch_state != getattr(self, 'last_pitch_pid_state', None):
+                color = "#00FF00" if self.ros_node.tail_pid_enabled else "#FF4500"
+                self.nav_pitch_pid_status_label.setText(f"PITCH PID: {pitch_state}")
+                self.nav_pitch_pid_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
+                self.last_pitch_pid_state = pitch_state
 
         # --- Keep control widgets in sync with ROS state ---
         if abs(self.manual_duration_spin.value() - self.ros_node.step_duration) > 1e-3 or \
