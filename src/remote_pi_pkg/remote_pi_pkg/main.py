@@ -6,6 +6,7 @@ os.environ['QT_QPA_PLATFORM'] = 'xcb'  # Try 'eglfs' if 'xcb' gives issues
 os.environ['QT_OPENGL'] = 'egl'        # Options: 'egl', 'desktop', or 'angle'
 
 import sys
+import signal
 import threading
 import rclpy
 from PyQt5.QtWidgets import QApplication
@@ -31,6 +32,7 @@ def main():
 
         # Start Qt GUI
         app = QApplication(sys.argv)
+        signal.signal(signal.SIGINT, lambda *args: app.quit())
         gui = AUVControlGUI(ros_node)
         gui.show()
         exit_code = app.exec_()
