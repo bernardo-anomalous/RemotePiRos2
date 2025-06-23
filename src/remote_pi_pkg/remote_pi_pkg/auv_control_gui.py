@@ -631,6 +631,10 @@ class AUVControlGUI(QWidget):
         self.last_servo_status = None
         self.last_roll_pid_state = None
         self.last_pitch_pid_state = None
+        # Track last synced control values to avoid redundant updates
+        self.last_step_duration = None
+        self.last_cruise_delay = None
+        self.last_cruise_enabled = None
 
 
         
@@ -677,6 +681,7 @@ class AUVControlGUI(QWidget):
         else:
             self.btn_cruise_toggle.setText("CRUISE: OFF")
             self.btn_cruise_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+        self.last_cruise_enabled = enabled
 
     def on_cruise_delay_update(self, delay: float):
         """Update cruise interval spin box from ROS."""
@@ -684,6 +689,7 @@ class AUVControlGUI(QWidget):
         self.cruise_interval_spin.setValue(delay)
         self.cruise_interval_spin.blockSignals(False)
         self.update_cruise_interval_label()
+        self.last_cruise_delay = delay
 
     def on_step_duration_update(self, duration: float):
         """Sync step duration spin boxes when changed externally."""
@@ -695,6 +701,7 @@ class AUVControlGUI(QWidget):
         self.navigation_duration_spin.blockSignals(False)
         self.update_manual_duration_label()
         self.update_nav_duration_label()
+        self.last_step_duration = duration
 
     def toggle_manual_feedback(self):
         self.manual_feedback_enabled = not self.manual_feedback_enabled
@@ -989,14 +996,29 @@ class AUVControlGUI(QWidget):
                 self.last_pitch_pid_state = pitch_state
 
         # --- Keep control widgets in sync with ROS state ---
-        if abs(self.manual_duration_spin.value() - self.ros_node.step_duration) > 1e-3 or \
-           abs(self.navigation_duration_spin.value() - self.ros_node.step_duration) > 1e-3:
+        step_dur_changed = (
+            self.ros_node.step_duration != getattr(self, 'last_step_duration', None)
+        )
+        if step_dur_changed and (
+            abs(self.manual_duration_spin.value() - self.ros_node.step_duration) > 1e-3 or
+            abs(self.navigation_duration_spin.value() - self.ros_node.step_duration) > 1e-3
+        ):
             self.on_step_duration_update(self.ros_node.step_duration)
 
-        if abs(self.cruise_interval_spin.value() - self.ros_node.cruise_delay) > 1e-3:
+        cruise_delay_changed = (
+            self.ros_node.cruise_delay != getattr(self, 'last_cruise_delay', None)
+        )
+        if cruise_delay_changed and (
+            abs(self.cruise_interval_spin.value() - self.ros_node.cruise_delay) > 1e-3
+        ):
             self.on_cruise_delay_update(self.ros_node.cruise_delay)
 
-        if self.btn_cruise_toggle.isChecked() != self.ros_node.cruise_enabled:
+        cruise_enabled_changed = (
+            self.ros_node.cruise_enabled != getattr(self, 'last_cruise_enabled', None)
+        )
+        if cruise_enabled_changed and (
+            self.btn_cruise_toggle.isChecked() != self.ros_node.cruise_enabled
+        ):
             self.on_cruise_enabled_update(self.ros_node.cruise_enabled)
             
 
