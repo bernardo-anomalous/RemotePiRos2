@@ -95,6 +95,7 @@ class CannedMovements:
         msg.priority = commands['priority']
 
         self.ros.canned_pub.publish(msg)
+        self.ros.last_movement_type = commands['movement_type']
         self.ros.last_command = (
             f"CANNED MOVEMENT PUBLISHED @ {self.ros.get_clock().now().to_msg()}"
         )
