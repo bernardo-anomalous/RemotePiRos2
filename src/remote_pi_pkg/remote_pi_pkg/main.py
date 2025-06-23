@@ -24,6 +24,7 @@ def main():
     joy_proc = subprocess.Popen(['ros2', 'run', 'joy', 'joy_node'])
     mapper_proc = subprocess.Popen(['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'])
     exit_code = 0
+    ros_node = None
     try:
         # Start ROS node
         ros_node = ROSInterface()
@@ -38,7 +39,8 @@ def main():
         exit_code = app.exec_()
     finally:
         # Cleanup
-        ros_node.destroy_node()
+        if ros_node:
+            ros_node.destroy_node()
         rclpy.shutdown()
         mapper_proc.terminate()
         joy_proc.terminate()
