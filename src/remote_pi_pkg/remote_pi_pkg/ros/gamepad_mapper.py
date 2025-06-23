@@ -145,6 +145,13 @@ class GamepadMapper(Node):
             Float32(data=self.canned_duration_factor)
         )
 
+    def decrease_duration_factor(self):
+        """Decrease canned movement duration scaling."""
+        self.canned_duration_factor = max(0.2, self.canned_duration_factor - 0.2)
+        self.duration_factor_pub.publish(
+            Float32(data=self.canned_duration_factor)
+        )
+
     def decrease_cruise_delay(self):
         """Reduce delay between cruise cycles."""
         self.cruise_delay = max(0.5, self.cruise_delay - 0.5)
