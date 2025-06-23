@@ -63,9 +63,9 @@ class GamepadMapper(Node):
             
             5: self.increase_cruise_delay,                     # Right bumper
             
-            6: self.decrease_duration_factor,                     # Left Trigger
+            6: self.decrease_step_duration,                    # Left Trigger
             
-            7: self.increase_duration_factor,                     # Right Trigger
+            7: self.increase_step_duration,                     # Right Trigger
             
             8: self._make_canned_handler(
                 self.canned_movements.canned_9_SWING_UP),         # Stick press L
@@ -93,8 +93,8 @@ class GamepadMapper(Node):
     def joy_callback(self, msg: Joy):
         # axes[3] -> roll, axes[4] -> pitch
         if len(msg.axes) > 3:
-            roll = msg.axes[3] * 15.0
-            pitch = msg.axes[4] * 15.0
+            roll = msg.axes[3] * 5.0
+            pitch = msg.axes[4] * 5.0
             self.target_roll_pub.publish(Float32(data=roll))
             self.target_pitch_pub.publish(Float32(data=pitch))
 
