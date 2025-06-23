@@ -120,6 +120,9 @@ class AUVControlGUI(QWidget):
 
         # Allow ROS node to trigger UI updates when lifecycle state changes
         self.ros_node.lifecycle_update_callback = self.update_lifecycle_buttons
+        self.ros_node.cruise_enabled_update_callback = self.on_cruise_enabled_update
+        self.ros_node.cruise_delay_update_callback = self.on_cruise_delay_update
+        self.ros_node.step_duration_update_callback = self.on_step_duration_update
 
 
 
@@ -642,6 +645,34 @@ class AUVControlGUI(QWidget):
         else:
             self.btn_cruise_toggle.setText("CRUISE: OFF")
             self.btn_cruise_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
+    def on_cruise_enabled_update(self, enabled: bool):
+        """Update cruise toggle when state changes via ROS."""
+        self.btn_cruise_toggle.setChecked(enabled)
+        if enabled:
+            self.btn_cruise_toggle.setText("CRUISE: ON")
+            self.btn_cruise_toggle.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
+        else:
+            self.btn_cruise_toggle.setText("CRUISE: OFF")
+            self.btn_cruise_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+
+    def on_cruise_delay_update(self, delay: float):
+        """Update cruise interval spin box from ROS."""
+        self.cruise_interval_spin.blockSignals(True)
+        self.cruise_interval_spin.setValue(delay)
+        self.cruise_interval_spin.blockSignals(False)
+        self.update_cruise_interval_label()
+
+    def on_step_duration_update(self, duration: float):
+        """Sync step duration spin boxes when changed externally."""
+        self.manual_duration_spin.blockSignals(True)
+        self.navigation_duration_spin.blockSignals(True)
+        self.manual_duration_spin.setValue(duration)
+        self.navigation_duration_spin.setValue(duration)
+        self.manual_duration_spin.blockSignals(False)
+        self.navigation_duration_spin.blockSignals(False)
+        self.update_manual_duration_label()
+        self.update_nav_duration_label()
 
     def toggle_manual_feedback(self):
         self.manual_feedback_enabled = not self.manual_feedback_enabled

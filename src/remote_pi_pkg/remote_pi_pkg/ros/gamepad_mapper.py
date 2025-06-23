@@ -24,6 +24,8 @@ class GamepadMapper(Node):
         self.cruise_delay_pub = self.create_publisher(Float32, 'cruise_delay', 10)
         self.duration_factor_pub = self.create_publisher(
             Float32, 'canned_duration_factor', 10)
+        self.step_duration_pub = self.create_publisher(
+            Float32, 'step_duration', 10)
         self.subscription = self.create_subscription(Joy, 'joy', self.joy_callback, 10)
         self.last_buttons = []
         self.cruise_enabled = False
@@ -76,8 +78,8 @@ class GamepadMapper(Node):
             12: self._make_canned_handler(
                 self.canned_movements.canned_13_ACCEL),           # D-pad left
             13: self.toggle_cruise,                             # D-pad right
-            14: self.increase_duration_factor,                  # Misc button 1
-            15: self.decrease_cruise_delay,                     # Misc button 2
+            14: self.increase_step_duration,                    # Misc button 1
+            15: self.decrease_step_duration,                    # Misc button 2
             16: self.increase_cruise_delay,                     # Misc button 3
         }
 
@@ -145,12 +147,22 @@ class GamepadMapper(Node):
             Float32(data=self.canned_duration_factor)
         )
 
+    def increase_step_duration(self):
+        """Increase the duration multiplier for canned steps."""
+        self.step_duration += 0.1
+        self.step_duration_pub.publish(Float32(data=self.step_duration))
+
     def decrease_duration_factor(self):
         """Decrease canned movement duration scaling."""
         self.canned_duration_factor = max(0.2, self.canned_duration_factor - 0.2)
         self.duration_factor_pub.publish(
             Float32(data=self.canned_duration_factor)
         )
+
+    def decrease_step_duration(self):
+        """Decrease the duration multiplier for canned steps."""
+        self.step_duration = max(0.1, self.step_duration - 0.1)
+        self.step_duration_pub.publish(Float32(data=self.step_duration))
 
     def decrease_cruise_delay(self):
         """Reduce delay between cruise cycles."""
