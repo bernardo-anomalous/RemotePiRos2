@@ -991,6 +991,17 @@ class AUVControlGUI(QWidget):
                 self.nav_pitch_pid_status_label.setStyleSheet(
                     "font-size: 18px; color: #FF4500;"
                 )
+
+        # --- Keep control widgets in sync with ROS state ---
+        if abs(self.manual_duration_spin.value() - self.ros_node.step_duration) > 1e-3 or \
+           abs(self.navigation_duration_spin.value() - self.ros_node.step_duration) > 1e-3:
+            self.on_step_duration_update(self.ros_node.step_duration)
+
+        if abs(self.cruise_interval_spin.value() - self.ros_node.cruise_delay) > 1e-3:
+            self.on_cruise_delay_update(self.ros_node.cruise_delay)
+
+        if self.btn_cruise_toggle.isChecked() != self.ros_node.cruise_enabled:
+            self.on_cruise_enabled_update(self.ros_node.cruise_enabled)
             
 
 
