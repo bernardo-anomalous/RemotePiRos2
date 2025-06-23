@@ -49,21 +49,22 @@ class GamepadMapper(Node):
         # order provided by the Joy message from the controller.
         self.button_actions = {
             0: self._make_canned_handler(
-                self.canned_movements.canned_1_low_thrust),       # A button
+                self.canned_movements.canned_13_ACCEL),       # A button
             1: self._make_canned_handler(
-                self.canned_movements.canned_2_medium_thrust),    # B button
+                self.canned_movements.canned_3_high_thrust),    # B button
             2: self._make_canned_handler(
-                self.canned_movements.canned_3_high_thrust),      # X button
+                self.canned_movements.canned_2_medium_thrust),      # X button
             3: self._make_canned_handler(
-                self.canned_movements.canned_4_forward_right),    # Y button
-            4: self._make_canned_handler(
-                self.canned_movements.canned_5_forward_left),     # Left bumper
-            5: self._make_canned_handler(
-                self.canned_movements.canned_6_hard_right),       # Right bumper
-            6: self._make_canned_handler(
-                self.canned_movements.canned_7_hard_left),        # Back
-            7: self._make_canned_handler(
-                self.canned_movements.canned_8_tail_thrust),      # Start
+                self.canned_movements.canned_1_low_thrust),    # Y button
+            
+            4: self.decrease_cruise_delay,                # Left bumper
+            
+            5: self.increase_cruise_delay,                     # Right bumper
+            
+            6: self.decrease_duration_factor,                     # Left Trigger
+            
+            7: self.increase_duration_factor,                     # Right Trigger
+            
             8: self._make_canned_handler(
                 self.canned_movements.canned_9_SWING_UP),         # Stick press L
             9: self._make_canned_handler(
@@ -88,10 +89,10 @@ class GamepadMapper(Node):
         return handler
 
     def joy_callback(self, msg: Joy):
-        # axes[2] -> roll, axes[3] -> pitch
+        # axes[3] -> roll, axes[4] -> pitch
         if len(msg.axes) > 3:
-            roll = msg.axes[2] * 15.0
-            pitch = msg.axes[3] * 15.0
+            roll = msg.axes[3] * 15.0
+            pitch = msg.axes[4] * 15.0
             self.target_roll_pub.publish(Float32(data=roll))
             self.target_pitch_pub.publish(Float32(data=pitch))
 
