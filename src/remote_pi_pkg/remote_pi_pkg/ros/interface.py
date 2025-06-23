@@ -55,6 +55,7 @@ class ROSInterface(Node):
 
         # Last command sent (for status display)
         self.last_command = "NONE"
+        self.last_movement_type = "NONE"
 
         # Publishers
         self.target_roll_pub = self.create_publisher(Float32, 'target_roll', 10)
@@ -312,6 +313,7 @@ class ROSInterface(Node):
 
         # Step 3: Publish the canned command
         self.canned_pub.publish(msg)
+        self.last_movement_type = canned_commands['movement_type']
         self.last_command = f"CANNED MOVEMENT PUBLISHED @ {self.get_clock().now().to_msg()}"
         #self.get_logger().info("[ROSInterface] Canned movement command sent.")
 
@@ -347,6 +349,7 @@ class ROSInterface(Node):
         msg.priority = 0
 
         self.canned_pub.publish(msg)
+        self.last_movement_type = msg.movement_type
         self.last_command = (
             f"CANNED STEP {step_index} PUBLISHED @ {self.get_clock().now().to_msg()}"
         )
@@ -400,6 +403,7 @@ class ROSInterface(Node):
         """Track the latest received servo command."""
         if msg.header.frame_id and msg.header.frame_id == self.get_name():
             return
+        self.last_movement_type = msg.movement_type
         self.last_command = (
             f"{msg.movement_type} CMD RECEIVED @ {msg.header.stamp}"
         )

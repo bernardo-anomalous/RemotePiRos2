@@ -5,6 +5,7 @@ from std_msgs.msg import Float32, Bool, String
 from auv_custom_interfaces.msg import ServoMovementCommand
 from remote_pi_pkg import CannedMovements
 import threading
+import time
 
 
 class GamepadMapper(Node):
@@ -28,6 +29,8 @@ class GamepadMapper(Node):
             Float32, 'step_duration', 10)
         self.subscription = self.create_subscription(Joy, 'joy', self.joy_callback, 10)
         self.last_buttons = []
+        self.last_press_times = {}
+        self.debounce_sec = 0.3
         self.cruise_enabled = False
         self.cruise_delay = 2.0
         self.canned_duration_factor = 1.0
@@ -102,11 +105,15 @@ class GamepadMapper(Node):
             self.last_buttons = [0] * len(msg.buttons)
 
         def pressed(index: int) -> bool:
-            return (
-                len(msg.buttons) > index
-                and msg.buttons[index]
-                and not self.last_buttons[index]
-            )
+            if len(msg.buttons) <= index:
+                return False
+            if not msg.buttons[index] or self.last_buttons[index]:
+                return False
+            last_time = self.last_press_times.get(index, 0.0)
+            if time.time() - last_time < self.debounce_sec:
+                return False
+            self.last_press_times[index] = time.time()
+            return True
 
         for idx, action in self.button_actions.items():
             if pressed(idx):

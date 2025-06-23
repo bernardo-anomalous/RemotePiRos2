@@ -927,7 +927,8 @@ class AUVControlGUI(QWidget):
             self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {short_status}")
 
         if hasattr(self, 'nav_last_canned_label'):
-            self.nav_last_canned_label.setText(f"LAST CANNED: {self.ros_node.last_command}")
+            movement = self.ros_node.last_movement_type
+            self.nav_last_canned_label.setText(f"LAST CANNED: {movement}")
 
         if "NOMINAL" in servo_status.upper():
             self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")  # Green
