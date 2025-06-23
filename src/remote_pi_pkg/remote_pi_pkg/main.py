@@ -42,8 +42,12 @@ def main():
         rclpy.shutdown()
         mapper_proc.terminate()
         joy_proc.terminate()
-        mapper_proc.wait()
-        joy_proc.wait()
+        for proc in (mapper_proc, joy_proc):
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
 
     sys.exit(exit_code)
 
