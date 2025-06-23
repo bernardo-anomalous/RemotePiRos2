@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             "interface = remote_pi_pkg.interface:main",
             "auv_control = remote_pi_pkg.main:main",
+            "gamepad_mapper = remote_pi_pkg.ros.gamepad_mapper:main",
         ],
     },
 )
