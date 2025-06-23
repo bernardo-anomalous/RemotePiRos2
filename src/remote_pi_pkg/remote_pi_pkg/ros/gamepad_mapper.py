@@ -1,9 +1,10 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
-from std_msgs.msg import Float32, Bool
+from std_msgs.msg import Float32, Bool, String
 from auv_custom_interfaces.msg import ServoMovementCommand
 from remote_pi_pkg import CannedMovements
+import threading
 
 
 class GamepadMapper(Node):
@@ -28,35 +29,63 @@ class GamepadMapper(Node):
         self.cruise_enabled = False
         self.cruise_delay = 2.0
         self.canned_duration_factor = 1.0
+        self.step_duration = 1.0
         self.roll_pid_enabled = True
         self.pid_reattach_pending = False
         self.tail_pid_enabled = True
         self.tail_pid_reattach_pending = False
+        self.auto_pid_reengage = True
+        self.last_servo_status_word = None
+        self.servo_driver_status = "UNKNOWN"
+        self.last_canned_callback = None
+        self.cruise_timer = None
         self.last_command = ""
 
         self.canned_movements = CannedMovements(self)
+        self.create_subscription(String, 'servo_driver_status',
+                                 self.servo_status_callback, 10)
 
         # Map joystick button indices to handler methods. Indices refer to the
         # order provided by the Joy message from the controller.
         self.button_actions = {
-            0: self.canned_movements.canned_1_low_thrust,       # A button
-            1: self.canned_movements.canned_2_medium_thrust,    # B button
-            2: self.canned_movements.canned_3_high_thrust,      # X button
-            3: self.canned_movements.canned_4_forward_right,    # Y button
-            4: self.canned_movements.canned_5_forward_left,     # Left bumper
-            5: self.canned_movements.canned_6_hard_right,       # Right bumper
-            6: self.canned_movements.canned_7_hard_left,        # Back
-            7: self.canned_movements.canned_8_tail_thrust,      # Start
-            8: self.canned_movements.canned_9_SWING_UP,         # Stick press L
-            9: self.canned_movements.canned_10_DOWN_TO_GLIDE,   # Stick press R
-            10: self.canned_movements.canned_11_UP_TO_GLIDE,    # D-pad up
-            11: self.canned_movements.canned_12_SWING_DOWN,     # D-pad down
-            12: self.canned_movements.canned_13_ACCEL,          # D-pad left
+            0: self._make_canned_handler(
+                self.canned_movements.canned_1_low_thrust),       # A button
+            1: self._make_canned_handler(
+                self.canned_movements.canned_2_medium_thrust),    # B button
+            2: self._make_canned_handler(
+                self.canned_movements.canned_3_high_thrust),      # X button
+            3: self._make_canned_handler(
+                self.canned_movements.canned_4_forward_right),    # Y button
+            4: self._make_canned_handler(
+                self.canned_movements.canned_5_forward_left),     # Left bumper
+            5: self._make_canned_handler(
+                self.canned_movements.canned_6_hard_right),       # Right bumper
+            6: self._make_canned_handler(
+                self.canned_movements.canned_7_hard_left),        # Back
+            7: self._make_canned_handler(
+                self.canned_movements.canned_8_tail_thrust),      # Start
+            8: self._make_canned_handler(
+                self.canned_movements.canned_9_SWING_UP),         # Stick press L
+            9: self._make_canned_handler(
+                self.canned_movements.canned_10_DOWN_TO_GLIDE),   # Stick press R
+            10: self._make_canned_handler(
+                self.canned_movements.canned_11_UP_TO_GLIDE),     # D-pad up
+            11: self._make_canned_handler(
+                self.canned_movements.canned_12_SWING_DOWN),      # D-pad down
+            12: self._make_canned_handler(
+                self.canned_movements.canned_13_ACCEL),           # D-pad left
             13: self.toggle_cruise,                             # D-pad right
             14: self.increase_duration_factor,                  # Misc button 1
             15: self.decrease_cruise_delay,                     # Misc button 2
             16: self.increase_cruise_delay,                     # Misc button 3
         }
+
+    def _make_canned_handler(self, method):
+        def handler():
+            dur = self.step_duration
+            method(duration_scale=dur)
+            self.last_canned_callback = lambda: method(duration_scale=dur)
+        return handler
 
     def joy_callback(self, msg: Joy):
         # axes[2] -> roll, axes[3] -> pitch
@@ -124,6 +153,38 @@ class GamepadMapper(Node):
         """Increase delay between cruise cycles."""
         self.cruise_delay += 0.5
         self.cruise_delay_pub.publish(Float32(data=self.cruise_delay))
+
+    def servo_status_callback(self, msg: String):
+        self.servo_driver_status = msg.data
+        status_word = msg.data.split(":")[0].strip().lower()
+        prev_status = self.last_servo_status_word
+        self.last_servo_status_word = status_word
+
+        if status_word == "busy":
+            if self.roll_pid_enabled:
+                self.set_pid(False)
+                self.roll_pid_enabled = False
+
+        elif status_word == "nominal":
+            if self.pid_reattach_pending:
+                if self.auto_pid_reengage:
+                    self.set_pid(True)
+                    self.roll_pid_enabled = True
+                self.pid_reattach_pending = False
+
+            if self.tail_pid_reattach_pending:
+                if self.auto_pid_reengage:
+                    self.set_tail_pid(True)
+                    self.tail_pid_enabled = True
+                self.tail_pid_reattach_pending = False
+
+            if (self.cruise_enabled and prev_status == "busy"
+                    and self.last_canned_callback):
+                if self.cruise_timer:
+                    self.cruise_timer.cancel()
+                self.cruise_timer = threading.Timer(
+                    self.cruise_delay, self.last_canned_callback)
+                self.cruise_timer.start()
 
 
 def main(args=None):
