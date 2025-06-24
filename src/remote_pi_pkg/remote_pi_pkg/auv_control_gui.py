@@ -487,10 +487,19 @@ class AUVControlGUI(QWidget):
         self.nav_pitch_pid_status_label.setFixedHeight(30)
         self.nav_pitch_pid_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
+        # Debug display for the active step duration coming from the ROS node
+        self.nav_step_duration_display = QLabel("STEP DURATION: 1.0s")
+        self.nav_step_duration_display.setStyleSheet(
+            "font-size: 16px; color: #AAAAAA;"
+        )
+        self.nav_step_duration_display.setFixedHeight(30)
+        self.nav_step_duration_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
         nav_right_layout.addWidget(self.nav_imu_health_label)
         nav_right_layout.addWidget(self.nav_servo_status_label)
         nav_right_layout.addWidget(self.nav_roll_pid_status_label)
         nav_right_layout.addWidget(self.nav_pitch_pid_status_label)
+        nav_right_layout.addWidget(self.nav_step_duration_display)
         nav_right_layout.addStretch(1)
         nav_main_layout.addLayout(nav_right_layout, 1)
 
@@ -708,6 +717,8 @@ class AUVControlGUI(QWidget):
         self.navigation_duration_spin.blockSignals(False)
         self.update_manual_duration_label()
         self.update_nav_duration_label()
+        if hasattr(self, 'nav_step_duration_display'):
+            self.nav_step_duration_display.setText(f"STEP DURATION: {duration:.1f}s")
         self.last_step_duration = duration
 
     def toggle_manual_feedback(self):
@@ -1015,6 +1026,11 @@ class AUVControlGUI(QWidget):
             abs(self.navigation_duration_spin.value() - self.ros_node.step_duration) > 1e-3
         ):
             self.on_step_duration_update(self.ros_node.step_duration)
+        elif step_dur_changed and hasattr(self, 'nav_step_duration_display'):
+            self.nav_step_duration_display.setText(
+                f"STEP DURATION: {self.ros_node.step_duration:.1f}s"
+            )
+            self.last_step_duration = self.ros_node.step_duration
 
         cruise_delay_changed = (
             self.ros_node.cruise_delay != getattr(self, 'last_cruise_delay', None)
