@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Absolute paths
-WORKSPACE_DIR="$HOME/RemotePiRos2"
+# Determine workspace location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_DIR="${REMOTE_PI_WS:-$SCRIPT_DIR}"
 LAUNCH_SCRIPT="$WORKSPACE_DIR/launch_gui.sh"
 ICON_PATH="$WORKSPACE_DIR/assets/icon.png"
 DESKTOP_FILE="$HOME/.local/share/applications/auv-control.desktop"

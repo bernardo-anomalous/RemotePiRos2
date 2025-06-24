@@ -16,6 +16,8 @@ from lifecycle_msgs.msg import Transition
 from PyQt5.QtGui import QTextOption
 import time
 import os
+from importlib import resources
+from pathlib import Path
 
 class AUVControlGUI(QWidget):
     def __init__(self, ros_node):
@@ -33,7 +35,15 @@ class AUVControlGUI(QWidget):
 
         # === GUI Styling and Background ===
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        bg_path = "/home/b/RemotePiRos2/assets/background.png"
+        pkg_path = Path(resources.files(__package__))
+        bg_path = None
+        for parent in [pkg_path] + list(pkg_path.parents):
+            candidate = parent / 'assets' / 'background.png'
+            if candidate.exists():
+                bg_path = str(candidate)
+                break
+        if bg_path is None:
+            bg_path = str(pkg_path / 'background.png')
         self.setStyleSheet(f"""
             /* === TRANSPARENCY FIX FOR QTextEdit === */
             QTextEdit, QTextEdit QAbstractScrollArea, QTextEdit::viewport {{
