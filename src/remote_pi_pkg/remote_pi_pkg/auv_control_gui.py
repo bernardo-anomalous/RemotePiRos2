@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QTextEdit, QLabel, QTabWidget, QDoubleSpinBox,
     QScrollArea, QSizePolicy
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import re
 from PyQt5.QtGui import QFont
 
@@ -20,6 +20,9 @@ from importlib import resources
 from pathlib import Path
 
 class AUVControlGUI(QWidget):
+    stepDurationChanged = pyqtSignal(float)
+    cruiseDelayChanged = pyqtSignal(float)
+    cruiseEnabledChanged = pyqtSignal(bool)
     def __init__(self, ros_node):
         super().__init__()
         self.ros_node = ros_node
@@ -128,27 +131,18 @@ class AUVControlGUI(QWidget):
         # === BUILD THE GUI ===
         self.init_ui()
 
-        # Allow ROS node to trigger UI updates via the Qt event loop. Wrapping
-        # these callbacks with QTimer.singleShot ensures that the GUI is
-        # modified only from the main thread.
+        # Connect Qt signals for thread-safe updates from the ROS node
+        self.stepDurationChanged.connect(self.on_step_duration_update)
+        self.cruiseDelayChanged.connect(self.on_cruise_delay_update)
+        self.cruiseEnabledChanged.connect(self.on_cruise_enabled_update)
+
+        # Allow ROS node to trigger UI updates by emitting these signals
         self.ros_node.lifecycle_update_callback = (
             lambda: QTimer.singleShot(0, self.update_lifecycle_buttons)
         )
-        self.ros_node.cruise_enabled_update_callback = (
-            lambda enabled: QTimer.singleShot(
-                0, lambda e=enabled: self.on_cruise_enabled_update(e)
-            )
-        )
-        self.ros_node.cruise_delay_update_callback = (
-            lambda delay: QTimer.singleShot(
-                0, lambda d=delay: self.on_cruise_delay_update(d)
-            )
-        )
-        self.ros_node.step_duration_update_callback = (
-            lambda duration: QTimer.singleShot(
-                0, lambda d=duration: self.on_step_duration_update(d)
-            )
-        )
+        self.ros_node.cruise_enabled_update_callback = self.cruiseEnabledChanged.emit
+        self.ros_node.cruise_delay_update_callback = self.cruiseDelayChanged.emit
+        self.ros_node.step_duration_update_callback = self.stepDurationChanged.emit
 
 
 
@@ -394,7 +388,7 @@ class AUVControlGUI(QWidget):
         nav_right_layout = QVBoxLayout()
         self.navigation_joystick = VirtualJoystickWidget()
         # Make the navigation joystick slightly smaller
-        self.navigation_joystick.setFixedSize(250, 250)
+        self.navigation_joystick.setFixedSize(150, 150)
         # Use the same callback logic as the Operations tab joystick
         self.navigation_joystick.callback = self.joystick_callback
         nav_right_layout.addWidget(self.navigation_joystick)
