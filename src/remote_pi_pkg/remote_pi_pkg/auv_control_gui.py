@@ -16,6 +16,8 @@ from lifecycle_msgs.msg import Transition
 from PyQt5.QtGui import QTextOption
 import time
 import os
+import signal
+import subprocess
 from importlib import resources
 from pathlib import Path
 
@@ -166,13 +168,27 @@ class AUVControlGUI(QWidget):
 
     def cleanup_external_nodes(self):
         """Terminate helper ROS nodes started with the GUI."""
-        for proc in (getattr(self, 'mapper_proc', None), getattr(self, 'joy_proc', None)):
+        for proc in (
+            getattr(self, 'mapper_proc', None),
+            getattr(self, 'joy_proc', None),
+        ):
             if proc and proc.poll() is None:
-                proc.terminate()
+                try:
+                    os.killpg(proc.pid, signal.SIGINT)
+                except ProcessLookupError:
+                    pass
+        for proc in (
+            getattr(self, 'mapper_proc', None),
+            getattr(self, 'joy_proc', None),
+        ):
+            if proc and proc.poll() is None:
                 try:
                     proc.wait(timeout=5)
-                except Exception:
-                    proc.kill()
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
                     proc.wait()
         
     def update_visuals(self):

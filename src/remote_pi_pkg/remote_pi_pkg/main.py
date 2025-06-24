@@ -1,5 +1,6 @@
 import os
 import subprocess
+import signal
 
 # === Enable OpenGL acceleration ===
 os.environ['QT_QPA_PLATFORM'] = 'xcb'  # Try 'eglfs' if 'xcb' gives issues
@@ -20,9 +21,14 @@ def main():
 
     rclpy.init()
 
-    # Launch input nodes alongside the GUI
-    joy_proc = subprocess.Popen(['ros2', 'run', 'joy', 'joy_node'])
-    mapper_proc = subprocess.Popen(['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'])
+    # Launch input nodes alongside the GUI in their own sessions so we can
+    # cleanly terminate the entire process groups.
+    joy_proc = subprocess.Popen(
+        ['ros2', 'run', 'joy', 'joy_node'], start_new_session=True
+    )
+    mapper_proc = subprocess.Popen(
+        ['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'], start_new_session=True
+    )
     exit_code = 0
     ros_node = None
     try:
@@ -42,14 +48,23 @@ def main():
         if ros_node:
             ros_node.destroy_node()
         rclpy.shutdown()
-        mapper_proc.terminate()
-        joy_proc.terminate()
+
         for proc in (mapper_proc, joy_proc):
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
+            if proc.poll() is None:
+                try:
+                    os.killpg(proc.pid, signal.SIGINT)
+                except ProcessLookupError:
+                    pass
+        for proc in (mapper_proc, joy_proc):
+            if proc.poll() is None:
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    proc.wait()
 
     sys.exit(exit_code)
 
