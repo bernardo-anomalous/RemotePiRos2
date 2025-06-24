@@ -773,10 +773,14 @@ class AUVControlGUI(QWidget):
 
 
     def update_manual_duration_label(self):
-        self.manual_duration_label.setText(f"{self.manual_duration_spin.value():.1f}s")
+        dur = self.manual_duration_spin.value()
+        self.manual_duration_label.setText(f"{dur:.1f}s")
+        self.ros_node.step_duration = dur
 
     def update_nav_duration_label(self):
-        self.navigation_duration_label.setText(f"{self.navigation_duration_spin.value():.1f}s")
+        dur = self.navigation_duration_spin.value()
+        self.navigation_duration_label.setText(f"{dur:.1f}s")
+        self.ros_node.step_duration = dur
 
     def update_cruise_interval_label(self):
         self.cruise_interval_label.setText(f"{self.cruise_interval_spin.value():.1f}s")
