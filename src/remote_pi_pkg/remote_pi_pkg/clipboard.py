@@ -249,14 +249,24 @@ class AUVControlGUI(QWidget):
                 current_roll, current_pitch = "N/A", "N/A"
         servo_text = "N/A"
         if self.ros_node.current_servo_angles:
-            servo_text = "<br>".join(f"SERVO {i+1}: {angle:.1f}" for i, angle in enumerate(self.ros_node.current_servo_angles))
+            servo_text = "<br>".join(
+                f"SERVO {i + 1}: {angle:.1f}" for i, angle in enumerate(self.ros_node.current_servo_angles)
+            )
+
+        current_pitch_text = colorize(current_pitch)
+        current_roll_text = colorize(current_roll)
+
+        factor_text = f"{self.ros_node.canned_duration_factor:.2f}"
+        if self.ros_node.canned_duration_factor < 1.0:
+            factor_text = f"<font color=\"#FF4500\">{factor_text}</font>"
+
         control_status = (
             f"PITCH COMMAND: {colorize(pitch_cmd)}<br>"
             f"ROLL COMMAND: {colorize(roll_cmd)}<br>"
-            f"CURRENT PITCH: {colorize('<font color=\"#FF4500\">'+f'{current_pitch:.1f}'+'</font>' if isinstance(current_pitch, float) and current_pitch < 0 else (f'{current_pitch:.1f}' if isinstance(current_pitch, float) else current_pitch))}<br>"
-            f"CURRENT ROLL: {colorize('<font color=\"#FF4500\">'+f'{current_roll:.1f}'+'</font>' if isinstance(current_roll, float) and current_roll < 0 else (f'{current_roll:.1f}' if isinstance(current_roll, float) else current_roll))}<br>"
+            f"CURRENT PITCH: {current_pitch_text}<br>"
+            f"CURRENT ROLL: {current_roll_text}<br>"
             f"SERVO ANGLES:<br>{servo_text}<br>"
-            f"CANNED DURATION FACTOR: {'<font color=\"#FF4500\">'+f'{self.ros_node.canned_duration_factor:.2f}'+'</font>' if self.ros_node.canned_duration_factor < 1.0 else f'{self.ros_node.canned_duration_factor:.2f}'}<br>"
+            f"CANNED DURATION FACTOR: {factor_text}<br>"
             f"LAST COMMAND SENT: {self.ros_node.last_command}"
         )
         self.control_status_field.setHtml(control_status)
