@@ -34,7 +34,7 @@ def main():
         # Start Qt GUI
         app = QApplication(sys.argv)
         signal.signal(signal.SIGINT, lambda *args: app.quit())
-        gui = AUVControlGUI(ros_node)
+        gui = AUVControlGUI(ros_node, joy_proc=joy_proc, mapper_proc=mapper_proc)
         gui.show()
         exit_code = app.exec_()
     finally:
