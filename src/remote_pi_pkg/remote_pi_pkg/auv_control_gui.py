@@ -219,10 +219,13 @@ class AUVControlGUI(QWidget):
         manual_tab.setAttribute(Qt.WA_StyledBackground, True)
         manual_tab.setStyleSheet("background: transparent;")
 
-        tabs.addTab(operation_tab, "OPERATION")
+        # Tab order: Navigation first, Operation second. Manual input is hidden.
         tabs.addTab(navigation_tab, "NAVIGATION")
-        tabs.addTab(manual_tab, "MANUAL INPUT")
+        tabs.addTab(operation_tab, "OPERATION")
         tabs.addTab(settings_tab, "SETTINGS")
+        # Do not show the manual input tab
+        # tabs.addTab(manual_tab, "MANUAL INPUT")
+        tabs.setCurrentWidget(navigation_tab)
         outer_layout.addWidget(tabs)
         self.setLayout(outer_layout)
 
@@ -390,6 +393,8 @@ class AUVControlGUI(QWidget):
         # Right side: joystick
         nav_right_layout = QVBoxLayout()
         self.navigation_joystick = VirtualJoystickWidget()
+        # Make the navigation joystick slightly smaller
+        self.navigation_joystick.setFixedSize(250, 250)
         # Use the same callback logic as the Operations tab joystick
         self.navigation_joystick.callback = self.joystick_callback
         nav_right_layout.addWidget(self.navigation_joystick)
@@ -460,30 +465,29 @@ class AUVControlGUI(QWidget):
 
         # Display the last canned message that cruise mode will repeat
         self.nav_last_canned_label = QLabel("LAST CANNED: NONE")
-        self.nav_last_canned_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.nav_last_canned_label.setStyleSheet("font-size: 16px; color: #AAAAAA;")
         nav_right_layout.addWidget(self.nav_last_canned_label)
 
         # --- Status indicators (Navigation Tab) ---
         self.nav_imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
-        self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #AAAAAA;")
         self.nav_imu_health_label.setFixedHeight(30)
         self.nav_imu_health_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.nav_servo_status_label = QLabel("SERVO DRIVER STATUS: UNKNOWN")
-        self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
-        # Prevent wrapping so the joystick layout doesn't shift
-        self.nav_servo_status_label.setWordWrap(False)
-        self.nav_servo_status_label.setFixedHeight(30)
+        self.nav_servo_status_label = QLabel("SERVO DRIVER STATUS:<br>UNKNOWN")
+        self.nav_servo_status_label.setStyleSheet("font-size: 16px; color: #AAAAAA;")
+        self.nav_servo_status_label.setWordWrap(True)
+        self.nav_servo_status_label.setFixedHeight(40)
         self.nav_servo_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.nav_roll_pid_status_label = QLabel("ROLL PID: UNKNOWN")
         self.nav_roll_pid_status_label.setStyleSheet(
-            "font-size: 18px; color: #AAAAAA;"
+            "font-size: 16px; color: #AAAAAA;"
         )
         self.nav_roll_pid_status_label.setFixedHeight(30)
         self.nav_roll_pid_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.nav_pitch_pid_status_label = QLabel("PITCH PID: UNKNOWN")
         self.nav_pitch_pid_status_label.setStyleSheet(
-            "font-size: 18px; color: #AAAAAA;"
+            "font-size: 16px; color: #AAAAAA;"
         )
         self.nav_pitch_pid_status_label.setFixedHeight(30)
         self.nav_pitch_pid_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -938,26 +942,26 @@ class AUVControlGUI(QWidget):
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #00FF00;")
             if hasattr(self, 'nav_imu_health_label'):
                 self.nav_imu_health_label.setText("IMU HEALTH: OK")
-                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #00FF00;")
+                self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #00FF00;")
         elif "UNSTABLE" in normalized:
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Orange
             if hasattr(self, 'nav_imu_health_label'):
                 self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health}")
-                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #FFA500;")
+                self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #FFA500;")
         elif "RESTARTING" in normalized:
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red
             if hasattr(self, 'nav_imu_health_label'):
                 self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health}")
-                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #FF4500;")
+                self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #FF4500;")
         else:
             # Display unrecognised status text directly
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health or 'UNKNOWN'}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
             if hasattr(self, 'nav_imu_health_label'):
                 self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health or 'UNKNOWN'}")
-                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+                self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #AAAAAA;")
             
         servo_status = self.ros_node.servo_driver_status
         if servo_status != getattr(self, 'last_servo_status', None):
@@ -966,7 +970,7 @@ class AUVControlGUI(QWidget):
                 short_status = servo_status
                 if len(short_status) > 30:
                     short_status = short_status[:27] + "..."
-                self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {short_status}")
+                self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS:<br>{short_status}")
 
             if "NOMINAL" in servo_status.upper():
                 color = "#00FF00"
@@ -978,7 +982,7 @@ class AUVControlGUI(QWidget):
                 color = "#FF4500"
             self.servo_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
             if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
+                self.nav_servo_status_label.setStyleSheet(f"font-size: 16px; color: {color};")
 
             self.last_servo_status = servo_status
 
@@ -992,7 +996,7 @@ class AUVControlGUI(QWidget):
             if current_state != getattr(self, 'last_roll_pid_state', None):
                 color = "#00FF00" if self.ros_node.roll_pid_enabled else "#FF4500"
                 self.nav_roll_pid_status_label.setText(f"ROLL PID: {current_state}")
-                self.nav_roll_pid_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
+                self.nav_roll_pid_status_label.setStyleSheet(f"font-size: 16px; color: {color};")
                 self.last_roll_pid_state = current_state
 
         if hasattr(self, 'nav_pitch_pid_status_label'):
@@ -1000,7 +1004,7 @@ class AUVControlGUI(QWidget):
             if pitch_state != getattr(self, 'last_pitch_pid_state', None):
                 color = "#00FF00" if self.ros_node.tail_pid_enabled else "#FF4500"
                 self.nav_pitch_pid_status_label.setText(f"PITCH PID: {pitch_state}")
-                self.nav_pitch_pid_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
+                self.nav_pitch_pid_status_label.setStyleSheet(f"font-size: 16px; color: {color};")
                 self.last_pitch_pid_state = pitch_state
 
         # --- Keep control widgets in sync with ROS state ---
