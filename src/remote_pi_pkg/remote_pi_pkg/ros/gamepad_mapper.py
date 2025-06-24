@@ -85,6 +85,38 @@ class GamepadMapper(Node):
             16: self.increase_cruise_delay,                     # Misc button 3
         }
 
+        # Axis mapping based on Joy message order. axes[3] -> roll, axes[4] ->
+        # pitch.
+        # NOTE: axis order from the controller:
+        #   0: left stick horizontal
+        #   1: left stick vertical
+        #   2: left trigger
+        #   3: right stick horizontal
+        #   4: right stick vertical
+        #   5: right trigger
+        #   6: D-pad horizontal
+        #   7: D-pad vertical
+        # The left stick horizontal axis (index 0) is used for directional
+        # canned movements when crossing a threshold.
+        self.axis_threshold = 0.5
+        self.axis_actions = {
+            0: {
+                'positive': self._make_canned_handler(
+                    self.canned_movements.canned_5_forward_left),
+                'negative': self._make_canned_handler(
+                    self.canned_movements.canned_4_forward_right),
+            },
+            # Placeholders for future axis assignments
+            1: {'positive': None, 'negative': None},
+            2: {'positive': None, 'negative': None},
+            3: {'positive': None, 'negative': None},
+            4: {'positive': None, 'negative': None},
+            5: {'positive': None, 'negative': None},
+            6: {'positive': None, 'negative': None},
+            7: {'positive': None, 'negative': None},
+        }
+        self.last_axes = []
+
     def _make_canned_handler(self, method):
         def handler():
             dur = self.step_duration
@@ -119,6 +151,25 @@ class GamepadMapper(Node):
                 action()
 
         self.last_buttons = list(msg.buttons)
+
+        if len(self.last_axes) < len(msg.axes):
+            self.last_axes.extend([0.0] * (len(msg.axes) - len(self.last_axes)))
+
+        for idx, actions in self.axis_actions.items():
+            if len(msg.axes) <= idx:
+                continue
+            prev = self.last_axes[idx] if idx < len(self.last_axes) else 0.0
+            val = msg.axes[idx]
+            if prev <= self.axis_threshold and val > self.axis_threshold:
+                handler = actions.get('positive')
+                if handler:
+                    handler()
+            elif prev >= -self.axis_threshold and val < -self.axis_threshold:
+                handler = actions.get('negative')
+                if handler:
+                    handler()
+            if idx < len(self.last_axes):
+                self.last_axes[idx] = val
 
     def send_servo_command(self, numbers, angles, duration: float = 1.0):
         msg = ServoMovementCommand()
