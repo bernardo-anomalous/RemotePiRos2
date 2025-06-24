@@ -72,17 +72,14 @@ class GamepadMapper(Node):
             
             8: self.toggle_cruise,                              # left select
             9: self._make_canned_handler(
-                self.canned_movements.canned_10_DOWN_TO_GLIDE),   # Stick press R
+                self.canned_movements.canned_10_DOWN_TO_GLIDE),   # Right Start
             10: self._make_canned_handler(
-                self.canned_movements.canned_11_UP_TO_GLIDE),     # D-pad up
+                self.canned_movements.canned_11_UP_TO_GLIDE),     # Home
             11: self._make_canned_handler(
-                self.canned_movements.canned_12_SWING_DOWN),      # D-pad down
+                self.canned_movements.canned_12_SWING_DOWN),      # Left Stick Click
             12: self._make_canned_handler(
-                self.canned_movements.canned_13_ACCEL),           # D-pad left
-            13: self.toggle_cruise,                             # D-pad right
-            14: self.increase_step_duration,                    # Misc button 1
-            15: self.decrease_step_duration,                    # Misc button 2
-            16: self.increase_cruise_delay,                     # Misc button 3
+                self.canned_movements.canned_13_ACCEL),           # Right Stick Click
+
         }
 
         # Axis mapping based on Joy message order. axes[3] -> roll, axes[4] ->
@@ -106,17 +103,16 @@ class GamepadMapper(Node):
                 'positive': self._make_canned_handler(
                     self.canned_movements.canned_5_forward_left),
                 'negative': self._make_canned_handler(
-                    self.canned_movements.canned_4_forward_right),
+                    self.canned_movements.canned_4_forward_right), #Left Stick Horizontal 
             },
             # Placeholders for future axis assignments
-            1: {'positive': None, 'negative': None},
-            2: {'positive': None, 'negative': None},
-            3: {'positive': None, 'negative': None},
-            4: {'positive': None, 'negative': None},
-            5: {'positive': None, 'negative': None},
-
-            6: {'positive': None, 'negative': None},
-            7: {'positive': None, 'negative': None},
+            1: {'positive': None, 'negative': None}, # Left Stick Vertical, 1 up, -1 down
+            2: {'positive': None, 'negative': None}, # Left Trigger, 1 released, -1 pressed
+            3: {'positive': None, 'negative': None}, # Right Stick Horizontal, 1 left, -1 right
+            4: {'positive': None, 'negative': None}, # Right Stick Vertical, 1 up, -1 down
+            5: {'positive': None, 'negative': None}, # Right Trigger, 1 released, -1 pressed
+            6: {'positive': None, 'negative': None}, # D-Pad Horizontal. 1 left, -1 right
+            7: {'positive': None, 'negative': None}, # D-Pad Vertical. 1 up, -1 down.
 
         }
         self.last_axes = []
