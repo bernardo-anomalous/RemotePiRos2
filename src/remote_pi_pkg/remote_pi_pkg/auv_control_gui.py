@@ -1,11 +1,10 @@
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QLabel, QTabWidget, QDoubleSpinBox,
-    QScrollArea, QSizePolicy
+    QSizePolicy
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import re
-from PyQt5.QtGui import QFont
 
 from remote_pi_pkg.ros.interface import ROSInterface
 from remote_pi_pkg.widgets.virtual_joystick import VirtualJoystickWidget
@@ -712,14 +711,18 @@ class AUVControlGUI(QWidget):
     def on_step_duration_update(self, duration: float):
         """Sync step duration spin boxes when changed externally."""
         self._syncing_step_duration = True
-        self.manual_duration_spin.blockSignals(True)
-        self.navigation_duration_spin.blockSignals(True)
-        self.manual_duration_spin.setValue(duration)
-        self.navigation_duration_spin.setValue(duration)
-        self.manual_duration_spin.blockSignals(False)
-        self.navigation_duration_spin.blockSignals(False)
-        self.update_manual_duration_label()
-        self.update_nav_duration_label()
+        if hasattr(self, "manual_duration_spin"):
+            self.manual_duration_spin.blockSignals(True)
+            self.manual_duration_spin.setValue(duration)
+            self.manual_duration_spin.blockSignals(False)
+            if hasattr(self, "update_manual_duration_label"):
+                self.update_manual_duration_label()
+        if hasattr(self, "navigation_duration_spin"):
+            self.navigation_duration_spin.blockSignals(True)
+            self.navigation_duration_spin.setValue(duration)
+            self.navigation_duration_spin.blockSignals(False)
+            if hasattr(self, "update_nav_duration_label"):
+                self.update_nav_duration_label()
         if hasattr(self, 'nav_step_duration_display'):
             self.nav_step_duration_display.setText(f"STEP DURATION: {duration:.1f}s")
         self.last_step_duration = duration
