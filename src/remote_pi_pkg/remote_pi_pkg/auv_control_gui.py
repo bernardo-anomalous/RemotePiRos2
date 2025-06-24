@@ -142,7 +142,9 @@ class AUVControlGUI(QWidget):
         )
         self.ros_node.cruise_enabled_update_callback = self.cruiseEnabledChanged.emit
         self.ros_node.cruise_delay_update_callback = self.cruiseDelayChanged.emit
-        self.ros_node.step_duration_update_callback = self.stepDurationChanged.emit
+        self.ros_node.step_duration_update_callback = (
+            lambda dur: QTimer.singleShot(0, lambda: self.stepDurationChanged.emit(dur))
+        )
 
 
 
