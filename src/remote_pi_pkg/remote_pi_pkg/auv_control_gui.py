@@ -651,6 +651,8 @@ class AUVControlGUI(QWidget):
         self.last_step_duration = None
         self.last_cruise_delay = None
         self.last_cruise_enabled = None
+        # Flag to prevent recursive step duration updates
+        self._syncing_step_duration = False
 
 
         
@@ -709,6 +711,7 @@ class AUVControlGUI(QWidget):
 
     def on_step_duration_update(self, duration: float):
         """Sync step duration spin boxes when changed externally."""
+        self._syncing_step_duration = True
         self.manual_duration_spin.blockSignals(True)
         self.navigation_duration_spin.blockSignals(True)
         self.manual_duration_spin.setValue(duration)
@@ -720,6 +723,7 @@ class AUVControlGUI(QWidget):
         if hasattr(self, 'nav_step_duration_display'):
             self.nav_step_duration_display.setText(f"STEP DURATION: {duration:.1f}s")
         self.last_step_duration = duration
+        self._syncing_step_duration = False
 
     def toggle_manual_feedback(self):
         self.manual_feedback_enabled = not self.manual_feedback_enabled
@@ -785,11 +789,15 @@ class AUVControlGUI(QWidget):
         dur = self.manual_duration_spin.value()
         self.manual_duration_label.setText(f"{dur:.1f}s")
         self.ros_node.step_duration = dur
+        if not self._syncing_step_duration:
+            self.stepDurationChanged.emit(dur)
 
     def update_nav_duration_label(self):
         dur = self.navigation_duration_spin.value()
         self.navigation_duration_label.setText(f"{dur:.1f}s")
         self.ros_node.step_duration = dur
+        if not self._syncing_step_duration:
+            self.stepDurationChanged.emit(dur)
 
     def update_cruise_interval_label(self):
         self.cruise_interval_label.setText(f"{self.cruise_interval_spin.value():.1f}s")
