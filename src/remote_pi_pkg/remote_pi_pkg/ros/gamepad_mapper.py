@@ -86,8 +86,20 @@ class GamepadMapper(Node):
         }
 
         # Axis mapping based on Joy message order. axes[3] -> roll, axes[4] ->
-        # pitch. The left stick horizontal axis (index 0) is used for
-        # directional canned movements when crossing a threshold.
+
+        # pitch.
+        # NOTE: axis order from the controller:
+        #   0: left stick horizontal
+        #   1: left stick vertical
+        #   2: left trigger
+        #   3: right stick horizontal
+        #   4: right stick vertical
+        #   5: right trigger
+        #   6: D-pad horizontal
+        #   7: D-pad vertical
+        # The left stick horizontal axis (index 0) is used for directional
+        # canned movements when crossing a threshold.
+
         self.axis_threshold = 0.5
         self.axis_actions = {
             0: {
@@ -102,6 +114,10 @@ class GamepadMapper(Node):
             3: {'positive': None, 'negative': None},
             4: {'positive': None, 'negative': None},
             5: {'positive': None, 'negative': None},
+
+            6: {'positive': None, 'negative': None},
+            7: {'positive': None, 'negative': None},
+
         }
         self.last_axes = []
 
