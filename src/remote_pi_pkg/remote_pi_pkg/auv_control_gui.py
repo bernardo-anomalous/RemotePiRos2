@@ -170,8 +170,6 @@ class AUVControlGUI(QWidget):
             if hasattr(self, 'nav_heading'):
                 self.nav_heading.update_heading_target(self.ros_node.heading)
             self.attitude_widget.update_heading_target(self.ros_node.heading)  # <<< THIS WAS MISSING
-            if hasattr(self, 'nav_heading'):
-                self.nav_heading.update_heading_target(self.ros_node.heading)
             if hasattr(self, 'nav_attitude_widget'):
                 self.nav_attitude_widget.update_heading_target(self.ros_node.heading)
 
