@@ -21,8 +21,12 @@ def main():
     rclpy.init()
 
     # Launch input nodes alongside the GUI
-    joy_proc = subprocess.Popen(['ros2', 'run', 'joy', 'joy_node'])
-    mapper_proc = subprocess.Popen(['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'])
+    joy_proc = subprocess.Popen(
+        ['ros2', 'run', 'joy', 'joy_node'],
+        start_new_session=True)
+    mapper_proc = subprocess.Popen(
+        ['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'],
+        start_new_session=True)
     exit_code = 0
     ros_node = None
     try:
@@ -42,13 +46,15 @@ def main():
         if ros_node:
             ros_node.destroy_node()
         rclpy.shutdown()
-        mapper_proc.terminate()
-        joy_proc.terminate()
         for proc in (mapper_proc, joy_proc):
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            except ProcessLookupError:
+                continue
             try:
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                proc.kill()
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
                 proc.wait()
 
     sys.exit(exit_code)
