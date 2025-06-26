@@ -334,6 +334,7 @@ class AUVControlGUI(QWidget):
         self.btn_step_duration_decrease.clicked.connect(self.manual_duration_spin.stepDown)
         self.btn_step_duration_increase.clicked.connect(self.manual_duration_spin.stepUp)
         self.manual_duration_spin.valueChanged.connect(self.update_manual_duration_label)
+        self.manual_duration_spin.valueChanged.connect(self.step_duration_value_changed)
 
         duration_row.addWidget(self.btn_step_duration_decrease)
         duration_row.addWidget(self.manual_duration_label)
@@ -445,6 +446,7 @@ class AUVControlGUI(QWidget):
         self.btn_nav_duration_decrease.clicked.connect(self.navigation_duration_spin.stepDown)
         self.btn_nav_duration_increase.clicked.connect(self.navigation_duration_spin.stepUp)
         self.navigation_duration_spin.valueChanged.connect(self.update_nav_duration_label)
+        self.navigation_duration_spin.valueChanged.connect(self.step_duration_value_changed)
 
         nav_duration_row.addWidget(self.btn_nav_duration_decrease)
         nav_duration_row.addWidget(self.navigation_duration_label)
@@ -743,6 +745,10 @@ class AUVControlGUI(QWidget):
             self.update_nav_duration_label()
 
         self.last_step_duration = duration
+
+    def step_duration_value_changed(self, value: float):
+        """Propagate step duration changes to the ROS node."""
+        self.ros_node.set_step_duration(float(value))
 
     def toggle_manual_feedback(self):
         self.manual_feedback_enabled = not self.manual_feedback_enabled
