@@ -127,8 +127,8 @@ class GamepadMapper(Node):
     def joy_callback(self, msg: Joy):
         # axes[3] -> roll, axes[4] -> pitch
         if len(msg.axes) > 3:
-            roll = msg.axes[3] * 5.0
-            pitch = msg.axes[4] * 5.0
+            roll = msg.axes[3] * 15.0
+            pitch = msg.axes[4] * 12.0
             self.target_roll_pub.publish(Float32(data=roll))
             self.target_pitch_pub.publish(Float32(data=pitch))
 
