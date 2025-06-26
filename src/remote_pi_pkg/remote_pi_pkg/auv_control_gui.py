@@ -730,14 +730,18 @@ class AUVControlGUI(QWidget):
 
     def on_step_duration_update(self, duration: float):
         """Sync step duration spin boxes when changed externally."""
-        self.manual_duration_spin.blockSignals(True)
-        self.navigation_duration_spin.blockSignals(True)
-        self.manual_duration_spin.setValue(duration)
-        self.navigation_duration_spin.setValue(duration)
-        self.manual_duration_spin.blockSignals(False)
-        self.navigation_duration_spin.blockSignals(False)
-        self.update_manual_duration_label()
-        self.update_nav_duration_label()
+        if hasattr(self, "manual_duration_spin"):
+            self.manual_duration_spin.blockSignals(True)
+            self.manual_duration_spin.setValue(duration)
+            self.manual_duration_spin.blockSignals(False)
+            self.update_manual_duration_label()
+
+        if hasattr(self, "navigation_duration_spin"):
+            self.navigation_duration_spin.blockSignals(True)
+            self.navigation_duration_spin.setValue(duration)
+            self.navigation_duration_spin.blockSignals(False)
+            self.update_nav_duration_label()
+
         self.last_step_duration = duration
 
     def toggle_manual_feedback(self):
@@ -1038,10 +1042,7 @@ class AUVControlGUI(QWidget):
         step_dur_changed = (
             self.ros_node.step_duration != getattr(self, 'last_step_duration', None)
         )
-        if step_dur_changed and (
-            abs(self.manual_duration_spin.value() - self.ros_node.step_duration) > 1e-3 or
-            abs(self.navigation_duration_spin.value() - self.ros_node.step_duration) > 1e-3
-        ):
+        if step_dur_changed:
             self.on_step_duration_update(self.ros_node.step_duration)
 
         cruise_delay_changed = (
