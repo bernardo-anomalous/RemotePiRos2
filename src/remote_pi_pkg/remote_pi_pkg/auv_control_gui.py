@@ -675,7 +675,9 @@ class AUVControlGUI(QWidget):
         def handler():
             dur = self.navigation_duration_spin.value()
             method(duration_scale=dur)
-            self.ros_node.last_canned_callback = lambda: method(duration_scale=dur)
+            self.ros_node.last_canned_callback = (
+                lambda: method(duration_scale=self.navigation_duration_spin.value())
+            )
         return handler
 
     def send_canned_and_remember(self):
