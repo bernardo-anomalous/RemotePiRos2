@@ -67,6 +67,7 @@ class ROSInterface(Node):
         self.tail_pid_pub = self.create_publisher(Bool, 'tail_pid_active', 10)
         self.create_subscription(Bool, 'tail_pid_active',
                                  self.tail_pid_status_callback, 10)
+        self.step_duration_pub = self.create_publisher(Float32, 'step_duration', 10)
 
         
         # Lifecycle service client
@@ -504,6 +505,19 @@ class ROSInterface(Node):
             except Exception as e:
                 self.get_logger().error(
                     f"Duration factor GUI callback failed: {e}")
+
+    def set_step_duration(self, duration: float):
+        """Update and publish the canned step duration."""
+        self.step_duration = float(duration)
+        msg = Float32()
+        msg.data = self.step_duration
+        self.step_duration_pub.publish(msg)
+        if hasattr(self, 'step_duration_update_callback'):
+            try:
+                self.step_duration_update_callback(self.step_duration)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Step duration GUI callback failed: {e}")
 
     def step_duration_callback(self, msg: Float32):
         """Handle updates to the step duration from the gamepad."""
