@@ -18,8 +18,12 @@ import time
 import os
 import signal
 import subprocess
+import logging
+import atexit
 from importlib import resources
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 class AUVControlGUI(QWidget):
     def __init__(self, ros_node, joy_proc=None, mapper_proc=None):
@@ -27,6 +31,7 @@ class AUVControlGUI(QWidget):
         self.ros_node = ros_node
         self.joy_proc = joy_proc
         self.mapper_proc = mapper_proc
+        atexit.register(self.cleanup_external_nodes)
         self.setWindowTitle("P.A.T.C.H-AUV CONTROL")
         self.setFixedSize(600, 980)  # Completely locks resizing
 
@@ -168,27 +173,36 @@ class AUVControlGUI(QWidget):
 
     def cleanup_external_nodes(self):
         """Terminate helper ROS nodes started with the GUI."""
-        for proc in (
-            getattr(self, 'mapper_proc', None),
-            getattr(self, 'joy_proc', None),
-        ):
+        processes = [
+            ('mapper_proc', getattr(self, 'mapper_proc', None)),
+            ('joy_proc', getattr(self, 'joy_proc', None)),
+        ]
+        for name, proc in processes:
             if proc and proc.poll() is None:
                 try:
                     os.killpg(proc.pid, signal.SIGINT)
                 except ProcessLookupError:
-                    pass
-        for proc in (
-            getattr(self, 'mapper_proc', None),
-            getattr(self, 'joy_proc', None),
-        ):
+                    logger.warning(
+                        "%s already terminated before SIGINT", name
+                    )
+                except Exception:  # pragma: no cover
+                    logger.exception("Failed to send SIGINT to %s", name)
+        for name, proc in processes:
             if proc and proc.poll() is None:
                 try:
                     proc.wait(timeout=5)
                 except subprocess.TimeoutExpired:
+                    logger.warning(
+                        "%s did not exit after SIGINT; killing", name
+                    )
                     try:
                         os.killpg(proc.pid, signal.SIGKILL)
                     except ProcessLookupError:
-                        pass
+                        logger.warning(
+                            "%s disappeared before SIGKILL", name
+                        )
+                    except Exception:  # pragma: no cover
+                        logger.exception("Failed to send SIGKILL to %s", name)
                     proc.wait()
         
     def update_visuals(self):
