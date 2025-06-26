@@ -119,9 +119,10 @@ class GamepadMapper(Node):
 
     def _make_canned_handler(self, method):
         def handler():
-            dur = self.step_duration
-            method(duration_scale=dur)
-            self.last_canned_callback = lambda: method(duration_scale=dur)
+            method(duration_scale=self.step_duration)
+            self.last_canned_callback = (
+                lambda: method(duration_scale=self.step_duration)
+            )
         return handler
 
     def joy_callback(self, msg: Joy):
