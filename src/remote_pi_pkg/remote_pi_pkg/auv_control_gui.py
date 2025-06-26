@@ -248,7 +248,6 @@ class AUVControlGUI(QWidget):
         operation_tab = QWidget()
         navigation_tab = QWidget()
         settings_tab = QWidget()
-        manual_tab = QWidget()
 
         operation_layout = QVBoxLayout()
 
@@ -259,12 +258,9 @@ class AUVControlGUI(QWidget):
         navigation_tab.setStyleSheet("background: transparent;")
         settings_tab.setAttribute(Qt.WA_StyledBackground, True)
         settings_tab.setStyleSheet("background: transparent;")
-        manual_tab.setAttribute(Qt.WA_StyledBackground, True)
-        manual_tab.setStyleSheet("background: transparent;")
 
         tabs.addTab(navigation_tab, "NAVIGATION")
         tabs.addTab(operation_tab, "OPERATION")
-        tabs.addTab(manual_tab, "MANUAL INPUT")
         tabs.addTab(settings_tab, "SETTINGS")
         tabs.setCurrentIndex(0)
         outer_layout.addWidget(tabs)
@@ -325,76 +321,7 @@ class AUVControlGUI(QWidget):
         settings_layout.addWidget(self.btn_quit)
         settings_tab.setLayout(settings_layout)
 
-        # === MANUAL INPUT TAB ===
-        manual_layout = QVBoxLayout()
 
-        # --- Step Duration Controls ---
-        duration_row = QHBoxLayout()
-        duration_row.addWidget(QLabel("STEP DURATION"))
-
-        self.manual_duration_spin = QDoubleSpinBox()
-        self.manual_duration_spin.setRange(0.1, 10.0)
-        self.manual_duration_spin.setSingleStep(0.1)
-        self.manual_duration_spin.setValue(1.0)
-        self.manual_duration_spin.hide()  # Hide the small spin box arrows
-
-        self.manual_duration_label = QLabel(f"{self.manual_duration_spin.value():.1f}s")
-        self.manual_duration_label.setAlignment(Qt.AlignCenter)
-        self.manual_duration_label.setStyleSheet("font-size: 24px;")
-
-        self.btn_step_duration_decrease = QPushButton("-")
-        self.btn_step_duration_increase = QPushButton("+")
-
-        self.btn_step_duration_decrease.clicked.connect(self.manual_duration_spin.stepDown)
-        self.btn_step_duration_increase.clicked.connect(self.manual_duration_spin.stepUp)
-        self.manual_duration_spin.valueChanged.connect(self.update_manual_duration_label)
-        self.manual_duration_spin.valueChanged.connect(self.step_duration_value_changed)
-
-        duration_row.addWidget(self.btn_step_duration_decrease)
-        duration_row.addWidget(self.manual_duration_label)
-        duration_row.addWidget(self.btn_step_duration_increase)
-
-        manual_layout.addLayout(duration_row)
-        manual_layout.addWidget(self.manual_duration_spin)
-
-        # Manual step feedback toggle
-        self.manual_feedback_enabled = True
-        self.last_manual_button = None
-        self.btn_manual_feedback_toggle = QPushButton("STEP FEEDBACK: ON")
-        self.btn_manual_feedback_toggle.setCheckable(True)
-        self.btn_manual_feedback_toggle.setChecked(True)
-        self.btn_manual_feedback_toggle.setStyleSheet(
-            "border: 2px solid #00FF00; color: #00FF00;"
-        )
-        self.btn_manual_feedback_toggle.clicked.connect(
-            self.toggle_manual_feedback
-        )
-        manual_layout.addWidget(self.btn_manual_feedback_toggle)
-
-        # Build manual step buttons dynamically from available canned movements
-        self.manual_step_buttons = []
-        canned_re = re.compile(r'^canned_(\d+)(?:_(.*))?$')
-        method_names = [m for m in dir(self.ros_node.canned_movements) if canned_re.match(m)]
-        method_names.sort(key=lambda n: int(canned_re.match(n).group(1)))
-        for name in method_names:
-            match = canned_re.match(name)
-            suffix = match.group(2)
-            if suffix:
-                label = suffix.replace('_', ' ').upper()
-            else:
-                label = match.group(1)
-            btn = QPushButton(label)
-            btn.setFixedHeight(35)
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            method = getattr(self.ros_node.canned_movements, name)
-            btn.clicked.connect(
-                self.make_manual_step_handler(btn, method)
-            )
-            manual_layout.addWidget(btn)
-            self.manual_step_buttons.append(btn)
-
-        manual_layout.addStretch(1)
-        manual_tab.setLayout(manual_layout)
 
         # === NAVIGATION TAB ===
         navigation_layout = QVBoxLayout()
@@ -562,45 +489,18 @@ class AUVControlGUI(QWidget):
         operation_layout.addWidget(self.attitude_widget)
         self.ros_node.attitude_widget = self.attitude_widget
 
-        main_layout = QHBoxLayout()
-
-        # LEFT COLUMN
-        left_layout = QVBoxLayout()
+        # Initialize controls used by update logic but omit them from the layout
         self.btn_pid_toggle = QPushButton("ROLL PID: INACTIVE")
         self.btn_pid_toggle.setCheckable(True)
-        self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
         self.btn_pid_toggle.clicked.connect(self.toggle_pid)
-
         self.btn_canned = QPushButton("SEND CANNED MOVEMENT")
         self.btn_duration_increase = QPushButton("DURATION +")
         self.btn_duration_decrease = QPushButton("DURATION -")
         self.btn_toggle_sticky = QPushButton("STICKY MODE: OFF")
-        self.btn_toggle_sticky.setObjectName("stickyOff")
-
-        self.btn_toggle_sticky.clicked.connect(self.toggle_sticky_mode)
-        self.btn_pid_toggle.clicked.connect(self.toggle_pid)
-        self.btn_canned.clicked.connect(self.send_canned_and_remember)
-        self.btn_duration_increase.clicked.connect(self.increase_duration)
-        self.btn_duration_decrease.clicked.connect(self.decrease_duration)
-
-        left_layout.addWidget(self.btn_pid_toggle)
-        left_layout.addWidget(self.btn_canned)
-        left_layout.addWidget(self.btn_duration_increase)
-        left_layout.addWidget(self.btn_duration_decrease)
-        left_layout.addWidget(self.btn_toggle_sticky)
-        left_layout.addStretch(1)
-        main_layout.addLayout(left_layout, 1)
-
-        # RIGHT COLUMN
-        right_layout = QVBoxLayout()
         self.virtual_joystick = VirtualJoystickWidget()
         self.virtual_joystick.callback = self.joystick_callback
 
-        right_layout.addWidget(self.virtual_joystick)
-        right_layout.addStretch(1)
-        main_layout.addLayout(right_layout, 1)
-
-        operation_layout.addLayout(main_layout)
+        # Removed manual controls and joystick to expand status area
 
         # === BOTTOM STATUS TABS ===
         status_tabs = QTabWidget()
@@ -616,6 +516,7 @@ class AUVControlGUI(QWidget):
         self.control_status_field.setReadOnly(True)
         self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
         self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
+        self.control_status_field.setMinimumHeight(250)
         self.control_status_layout.addWidget(self.control_status_field)
         status_tabs.addTab(control_status_tab, "CONTROL STATUS")
 
@@ -626,6 +527,7 @@ class AUVControlGUI(QWidget):
         system_status_layout = QVBoxLayout(system_status_tab)
         self.status_display = QTextEdit()
         self.status_display.setReadOnly(True)
+        self.status_display.setMinimumHeight(250)
         system_status_layout.addWidget(self.status_display)
         status_tabs.addTab(system_status_tab, "SYSTEM STATUS")
         
@@ -703,6 +605,8 @@ class AUVControlGUI(QWidget):
 
         
     def toggle_sticky_mode(self):
+        if not hasattr(self, 'virtual_joystick'):
+            return
         new_mode = not self.virtual_joystick.sticky_mode
         self.virtual_joystick.sticky_mode = new_mode
         if hasattr(self, 'navigation_joystick'):
@@ -746,12 +650,6 @@ class AUVControlGUI(QWidget):
 
     def on_step_duration_update(self, duration: float):
         """Sync step duration spin boxes when changed externally."""
-        if hasattr(self, "manual_duration_spin"):
-            self.manual_duration_spin.blockSignals(True)
-            self.manual_duration_spin.setValue(duration)
-            self.manual_duration_spin.blockSignals(False)
-            self.update_manual_duration_label()
-
         if hasattr(self, "navigation_duration_spin"):
             self.navigation_duration_spin.blockSignals(True)
             self.navigation_duration_spin.setValue(duration)
@@ -764,35 +662,6 @@ class AUVControlGUI(QWidget):
         """Propagate step duration changes to the ROS node."""
         self.ros_node.set_step_duration(float(value))
 
-    def toggle_manual_feedback(self):
-        self.manual_feedback_enabled = not self.manual_feedback_enabled
-        if self.manual_feedback_enabled:
-            self.btn_manual_feedback_toggle.setText("STEP FEEDBACK: ON")
-            self.btn_manual_feedback_toggle.setStyleSheet(
-                "border: 2px solid #00FF00; color: #00FF00;"
-            )
-        else:
-            self.btn_manual_feedback_toggle.setText("STEP FEEDBACK: OFF")
-            self.btn_manual_feedback_toggle.setStyleSheet(
-                "border: 2px solid #FF4500; color: #FF4500;"
-            )
-            if self.last_manual_button:
-                self.last_manual_button.setStyleSheet("border: 2px solid #00FFFF;")
-
-    def highlight_manual_button(self, btn):
-        if self.last_manual_button:
-            self.last_manual_button.setStyleSheet("border: 2px solid #00FFFF;")
-        btn.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
-        self.last_manual_button = btn
-
-    def make_manual_step_handler(self, btn, method):
-        def handler():
-            dur = self.manual_duration_spin.value()
-            method(duration_scale=dur)
-            self.ros_node.last_canned_callback = lambda: method(duration_scale=dur)
-            if self.manual_feedback_enabled:
-                self.highlight_manual_button(btn)
-        return handler
 
     def make_nav_step_handler(self, method):
         def handler():
@@ -825,9 +694,6 @@ class AUVControlGUI(QWidget):
         self.ros_node.canned_duration_factor = max(0.1, new_factor)
         #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
-
-    def update_manual_duration_label(self):
-        self.manual_duration_label.setText(f"{self.manual_duration_spin.value():.1f}s")
 
     def update_nav_duration_label(self):
         self.navigation_duration_label.setText(f"{self.navigation_duration_spin.value():.1f}s")
@@ -901,6 +767,9 @@ class AUVControlGUI(QWidget):
             f"CURRENT ROLL: {colorize(current_roll)}<br>"
             f"SERVO ANGLES:<br>{servo_text}<br>"
             f"CANNED DURATION FACTOR: {factor_str}<br>"
+            f"STEP DURATION: {self.ros_node.step_duration:.1f}s<br>"
+            f"CRUISE: {'ON' if self.ros_node.cruise_enabled else 'OFF'}<br>"
+            f"CRUISE INTERVAL: {self.ros_node.cruise_delay:.1f}s<br>"
             f"LAST COMMAND SENT: {self.ros_node.last_command}"
         )
 
