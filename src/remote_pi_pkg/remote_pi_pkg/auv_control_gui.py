@@ -339,6 +339,14 @@ class AUVControlGUI(QWidget):
         # Left side: canned movement buttons
         nav_left_layout = QVBoxLayout()
         self.navigation_step_buttons = []
+
+        canned_re = re.compile(r"^canned_(\d+)(?:_(.*))?$")
+        method_names = [
+            name for name in dir(self.ros_node.canned_movements)
+            if canned_re.match(name)
+        ]
+        method_names.sort(key=lambda n: int(canned_re.match(n).group(1)))
+
         for name in method_names:
             match = canned_re.match(name)
             suffix = match.group(2)
