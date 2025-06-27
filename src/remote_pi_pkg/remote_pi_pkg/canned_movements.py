@@ -462,7 +462,7 @@ class CannedMovements:
 
     
     def canned_13_ACCEL(self, duration_scale: float = 1.0): # minimum thrust
-        base_durations = [1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,]
+        base_durations = [0.5,1.0,0.5,0.5,1.0,0.5,0.5,1.0,0.5,0.5,0.8,0.5,0.5,0.8,0.5,0.5,0.6,0.5,0.5,0.6,0.5,0.5,0.6,0.5,]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
