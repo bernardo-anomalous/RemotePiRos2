@@ -111,8 +111,18 @@ class GamepadMapper(Node):
             3: {'positive': None, 'negative': None}, # Right Stick Horizontal, 1 left, -1 right
             4: {'positive': None, 'negative': None}, # Right Stick Vertical, 1 up, -1 down
             5: {'positive': None, 'negative': None}, # Right Trigger, 1 released, -1 pressed
-            6: {'positive': None, 'negative': None}, # D-Pad Horizontal. 1 left, -1 right
-            7: {'positive': None, 'negative': None}, # D-Pad Vertical. 1 up, -1 down.
+            6: {
+                'positive': self._make_canned_handler(
+                    self.canned_movements.canned_10_DOWN_TO_GLIDE),
+                'negative': self._make_canned_handler(
+                    self.canned_movements.canned_11_UP_TO_GLIDE), #Left Stick Horizontal 
+            }, # D-Pad Horizontal. 1 left, -1 right
+            7: {
+                'positive': self._make_canned_handler(
+                    self.canned_movements.canned_9_SWING_UP),
+                'negative': self._make_canned_handler(
+                    self.canned_movements.canned_12_SWING_DOWN), #Left Stick Horizontal 
+            }, # D-Pad Vertical. 1 up, -1 down.
 
         }
         self.last_axes = []
