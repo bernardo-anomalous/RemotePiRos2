@@ -95,6 +95,7 @@ class CannedMovements:
         msg.priority = commands['priority']
 
         self.ros.canned_pub.publish(msg)
+        self.ros.last_movement_type = commands['movement_type']
         self.ros.last_command = (
             f"CANNED MOVEMENT PUBLISHED @ {self.ros.get_clock().now().to_msg()}"
         )
@@ -123,7 +124,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'THRUST_UNIT_1',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -132,7 +133,7 @@ class CannedMovements:
         self._publish(commands)
 
     def canned_2_medium_thrust(self, duration_scale: float = 1.0): # Medium Thrust
-        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
+        base_durations = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
@@ -155,7 +156,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'THRUST_UNIT_2',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -164,7 +165,7 @@ class CannedMovements:
         self._publish(commands)
 
     def canned_3_high_thrust(self, duration_scale: float = 1.0):
-        base_durations = [0.2, 2.0, 0.1, 0.1, 2.5, 0.01, 0.1, 2.0, 2.0]
+        base_durations = [0.5, 1.0, 0.5, 0.5, 1.0, 0.5, 0.5, 1.0, 1.0]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
@@ -187,7 +188,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'THRUST_UNIT_3',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -373,7 +374,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'SWING_UP',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -399,7 +400,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'DOWN_TO_GLIDE',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -425,7 +426,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'UP_TO_GLIDE',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -451,7 +452,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 9,
             'easing_out_factors': [0.1, 0.0, 0.0],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'SWING_DOWN',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',
@@ -461,7 +462,7 @@ class CannedMovements:
 
     
     def canned_13_ACCEL(self, duration_scale: float = 1.0): # minimum thrust
-        base_durations = [1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,]
+        base_durations = [0.5,1.0,0.5,0.5,1.0,0.5,0.5,1.0,0.5,0.5,0.8,0.5,0.5,0.8,0.5,0.5,0.6,0.5,0.5,0.6,0.5,0.5,0.6,0.5,]
         adjusted = [
             d * self.ros.canned_duration_factor * duration_scale
             for d in base_durations
@@ -503,7 +504,7 @@ class CannedMovements:
             ],
             'easing_in_factors': [0.0] * 24,
             'easing_out_factors': [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,],
-            'movement_type': 'THRUST_UNIT',
+            'movement_type': 'ACCELERATION',
             'deadline': (self.ros.get_clock().now() +
                         rclpy.duration.Duration(seconds=5)).to_msg(),
             'operational_mode': 'ENERGY_EFFICIENT',

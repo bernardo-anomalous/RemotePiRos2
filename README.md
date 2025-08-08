@@ -42,7 +42,7 @@ RemotePiRos2/
    ./launch_gui.sh
    ```
 
-The script sources `/opt/ros/jazzy/setup.bash` and the workspace's `install/setup.bash`, then runs `ros2 run remote_pi_pkg auv_control`.
+The script sources `/opt/ros/jazzy/setup.bash` and the workspace's `install/setup.bash`, then runs `ros2 run remote_pi_pkg auv_control`. The `auv_control` entry point automatically starts the standard `joy` node and the internal gamepad mapper so joystick input is available without additional commands.
 
 ## ROS 2 overview
 
@@ -97,7 +97,7 @@ These allow the GUI to manage the servo driver node's lifecycle (configure, acti
 
 ### GUI package (`remote_pi_pkg`)
 
-- **`main.py`** – initializes rclpy, spins `ROSInterface` in a background thread and starts the Qt application defined in `auv_control_gui.py`.
+- **`main.py`** – initializes rclpy, spins `ROSInterface` in a background thread, starts the Qt application defined in `auv_control_gui.py`, and registers a signal handler so pressing Ctrl+C exits the GUI and triggers the cleanup block.
 - **`auv_control_gui.py`** – builds the Qt GUI. It presents operation tabs, manual movement controls and status fields. Widgets update in real time from ROS topics and send commands through `ROSInterface`.
 - **`ros/interface.py`** – core ROS node which publishes target roll/pitch values, sends servo interpolation commands, and receives telemetry. It manages the servo driver lifecycle through services.
 - **`ros/underwater_conditions.py`** and **`ros/fake_imu_publisher.py`** – standalone ROS nodes useful for testing the GUI without real hardware. They periodically publish simulated IMU readings.

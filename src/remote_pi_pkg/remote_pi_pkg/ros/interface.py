@@ -21,6 +21,7 @@ class ROSInterface(Node):
         self.mode = "OPERATION"
         self.canned_duration_factor = 1.0
         self.DURATION_STEP = 0.2  # Adjustable increment
+        self.step_duration = 1.0  # Duration scale used by gamepad actions
 
         # Predefined servo positions for the canned wing cycle
         self.canned_servo_numbers = [0, 1, 2, 3]
@@ -54,6 +55,7 @@ class ROSInterface(Node):
 
         # Last command sent (for status display)
         self.last_command = "NONE"
+        self.last_movement_type = "NONE"
 
         # Publishers
         self.target_roll_pub = self.create_publisher(Float32, 'target_roll', 10)
@@ -65,6 +67,7 @@ class ROSInterface(Node):
         self.tail_pid_pub = self.create_publisher(Bool, 'tail_pid_active', 10)
         self.create_subscription(Bool, 'tail_pid_active',
                                  self.tail_pid_status_callback, 10)
+        self.step_duration_pub = self.create_publisher(Float32, 'step_duration', 10)
 
         
         # Lifecycle service client
@@ -109,6 +112,23 @@ class ROSInterface(Node):
         # Acceleration processed data (for GUI Acceleration Dot)
         self.current_acceleration = Vector3()
         self.create_subscription(Vector3, 'acceleration/processed', self.acceleration_callback, 10)
+
+        # Subscriptions for cruise control settings coming from the gamepad
+        self.create_subscription(Bool, 'cruise_enabled',
+                                 self.cruise_enabled_callback, 10)
+        self.create_subscription(Float32, 'cruise_delay',
+                                 self.cruise_delay_callback, 10)
+        self.create_subscription(Float32, 'canned_duration_factor',
+                                 self.duration_factor_callback, 10)
+        self.create_subscription(Float32, 'step_duration',
+                                 self.step_duration_callback, 10)
+
+        self.create_subscription(
+            ServoMovementCommand,
+            'servo_interpolation_commands',
+            self.servo_command_callback,
+            10,
+        )
 
         # --- Cruise Control ---
         self.cruise_enabled = False
@@ -280,6 +300,7 @@ class ROSInterface(Node):
 
         msg = ServoMovementCommand()
         msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = self.get_name()
         msg.servo_numbers = canned_commands['servo_numbers']
         msg.target_angles = canned_commands['target_angles']
         msg.durations = canned_commands['durations']
@@ -293,6 +314,7 @@ class ROSInterface(Node):
 
         # Step 3: Publish the canned command
         self.canned_pub.publish(msg)
+        self.last_movement_type = canned_commands['movement_type']
         self.last_command = f"CANNED MOVEMENT PUBLISHED @ {self.get_clock().now().to_msg()}"
         #self.get_logger().info("[ROSInterface] Canned movement command sent.")
 
@@ -315,6 +337,7 @@ class ROSInterface(Node):
 
         msg = ServoMovementCommand()
         msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = self.get_name()
         msg.servo_numbers = self.canned_servo_numbers
         msg.target_angles = self.canned_target_angles[step_index]
         msg.durations = [float(duration)]
@@ -327,6 +350,7 @@ class ROSInterface(Node):
         msg.priority = 0
 
         self.canned_pub.publish(msg)
+        self.last_movement_type = msg.movement_type
         self.last_command = (
             f"CANNED STEP {step_index} PUBLISHED @ {self.get_clock().now().to_msg()}"
         )
@@ -375,6 +399,15 @@ class ROSInterface(Node):
             #self.get_logger().info(f"EULER ANGLES RECEIVED: {self.euler}")
         except Exception as e:
             self.get_logger().error(f"Failed to parse euler data: {e}")
+
+    def servo_command_callback(self, msg: ServoMovementCommand):
+        """Track the latest received servo command."""
+        if msg.header.frame_id and msg.header.frame_id == self.get_name():
+            return
+        self.last_movement_type = msg.movement_type
+        self.last_command = (
+            f"{msg.movement_type} CMD RECEIVED @ {msg.header.stamp}"
+        )
             
 
     def get_lifecycle_state(self):
@@ -435,6 +468,66 @@ class ROSInterface(Node):
     def tail_pid_status_callback(self, msg):
         self.tail_pid_enabled = msg.data
         # Optionally, emit a signal to the GUI if needed
+
+    def cruise_enabled_callback(self, msg: Bool):
+        """Handle updates to the cruise enabled flag."""
+        self.cruise_enabled = msg.data
+        if self.cruise_enabled:
+            self.restart_cruise_timer()
+        elif self.cruise_timer:
+            self.cruise_timer.cancel()
+            self.cruise_timer = None
+        if hasattr(self, 'cruise_enabled_update_callback'):
+            try:
+                self.cruise_enabled_update_callback(self.cruise_enabled)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Cruise enabled GUI callback failed: {e}")
+
+    def cruise_delay_callback(self, msg: Float32):
+        """Handle updates to the cruise delay."""
+        self.cruise_delay = msg.data
+        if self.cruise_enabled:
+            self.restart_cruise_timer()
+        if hasattr(self, 'cruise_delay_update_callback'):
+            try:
+                self.cruise_delay_update_callback(self.cruise_delay)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Cruise delay GUI callback failed: {e}")
+
+    def duration_factor_callback(self, msg: Float32):
+        """Handle updates to canned duration scaling."""
+        self.canned_duration_factor = msg.data
+        if hasattr(self, 'duration_factor_update_callback'):
+            try:
+                self.duration_factor_update_callback(self.canned_duration_factor)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Duration factor GUI callback failed: {e}")
+
+    def set_step_duration(self, duration: float):
+        """Update and publish the canned step duration."""
+        self.step_duration = float(duration)
+        msg = Float32()
+        msg.data = self.step_duration
+        self.step_duration_pub.publish(msg)
+        if hasattr(self, 'step_duration_update_callback'):
+            try:
+                self.step_duration_update_callback(self.step_duration)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Step duration GUI callback failed: {e}")
+
+    def step_duration_callback(self, msg: Float32):
+        """Handle updates to the step duration from the gamepad."""
+        self.step_duration = msg.data
+        if hasattr(self, 'step_duration_update_callback'):
+            try:
+                self.step_duration_update_callback(self.step_duration)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Step duration GUI callback failed: {e}")
         
     def check_lifecycle_future(self):
         if self.lifecycle_future is not None and self.lifecycle_future.done():

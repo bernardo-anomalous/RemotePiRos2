@@ -16,11 +16,22 @@ from lifecycle_msgs.msg import Transition
 from PyQt5.QtGui import QTextOption
 import time
 import os
+import signal
+import subprocess
+import logging
+import atexit
+from importlib import resources
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 class AUVControlGUI(QWidget):
-    def __init__(self, ros_node):
+    def __init__(self, ros_node, joy_proc=None, mapper_proc=None):
         super().__init__()
         self.ros_node = ros_node
+        self.joy_proc = joy_proc
+        self.mapper_proc = mapper_proc
+        atexit.register(self.cleanup_external_nodes)
         self.setWindowTitle("P.A.T.C.H-AUV CONTROL")
         self.setFixedSize(600, 980)  # Completely locks resizing
 
@@ -33,7 +44,15 @@ class AUVControlGUI(QWidget):
 
         # === GUI Styling and Background ===
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        bg_path = "/home/b/RemotePiRos2/assets/background.png"
+        pkg_path = Path(resources.files(__package__))
+        bg_path = None
+        for parent in [pkg_path] + list(pkg_path.parents):
+            candidate = parent / 'assets' / 'background.png'
+            if candidate.exists():
+                bg_path = str(candidate)
+                break
+        if bg_path is None:
+            bg_path = str(pkg_path / 'background.png')
         self.setStyleSheet(f"""
             /* === TRANSPARENCY FIX FOR QTextEdit === */
             QTextEdit, QTextEdit QAbstractScrollArea, QTextEdit::viewport {{
@@ -118,19 +137,73 @@ class AUVControlGUI(QWidget):
         # === BUILD THE GUI ===
         self.init_ui()
 
-        # Allow ROS node to trigger UI updates when lifecycle state changes
-        self.ros_node.lifecycle_update_callback = self.update_lifecycle_buttons
+        # Allow ROS node to trigger UI updates via the Qt event loop. Wrapping
+        # these callbacks with QTimer.singleShot ensures that the GUI is
+        # modified only from the main thread.
+        self.ros_node.lifecycle_update_callback = (
+            lambda: QTimer.singleShot(0, self.update_lifecycle_buttons)
+        )
+        self.ros_node.cruise_enabled_update_callback = (
+            lambda enabled: QTimer.singleShot(
+                0, lambda e=enabled: self.on_cruise_enabled_update(e)
+            )
+        )
+        self.ros_node.cruise_delay_update_callback = (
+            lambda delay: QTimer.singleShot(
+                0, lambda d=delay: self.on_cruise_delay_update(d)
+            )
+        )
+        self.ros_node.step_duration_update_callback = (
+            lambda duration: QTimer.singleShot(
+                0, lambda d=duration: self.on_step_duration_update(d)
+            )
+        )
 
 
 
         # === NOW SAFELY START THE TIMER ===
         self.status_update_timer = QTimer()
         self.status_update_timer.timeout.connect(self.update_status)
-        self.status_update_timer.start(500)
+        # Faster refresh for status information
+        self.status_update_timer.start(100)
         # Visual update timer (runs at 60Hz)
         self.visual_update_timer = QTimer()
         self.visual_update_timer.timeout.connect(self.update_visuals)
         self.visual_update_timer.start(16)  # About 60 FPS
+
+    def cleanup_external_nodes(self):
+        """Terminate helper ROS nodes started with the GUI."""
+        processes = [
+            ('mapper_proc', getattr(self, 'mapper_proc', None)),
+            ('joy_proc', getattr(self, 'joy_proc', None)),
+        ]
+        for name, proc in processes:
+            if proc and proc.poll() is None:
+                try:
+                    os.killpg(proc.pid, signal.SIGINT)
+                except ProcessLookupError:
+                    logger.warning(
+                        "%s already terminated before SIGINT", name
+                    )
+                except Exception:  # pragma: no cover
+                    logger.exception("Failed to send SIGINT to %s", name)
+        for name, proc in processes:
+            if proc and proc.poll() is None:
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    logger.warning(
+                        "%s did not exit after SIGINT; killing", name
+                    )
+                    try:
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        logger.warning(
+                            "%s disappeared before SIGKILL", name
+                        )
+                    except Exception:  # pragma: no cover
+                        logger.exception("Failed to send SIGKILL to %s", name)
+                    proc.wait()
         
     def update_visuals(self):
         # Send target values to widgets every frame
@@ -150,8 +223,6 @@ class AUVControlGUI(QWidget):
             if hasattr(self, 'nav_heading'):
                 self.nav_heading.update_heading_target(self.ros_node.heading)
             self.attitude_widget.update_heading_target(self.ros_node.heading)  # <<< THIS WAS MISSING
-            if hasattr(self, 'nav_heading'):
-                self.nav_heading.update_heading_target(self.ros_node.heading)
             if hasattr(self, 'nav_attitude_widget'):
                 self.nav_attitude_widget.update_heading_target(self.ros_node.heading)
 
@@ -177,7 +248,6 @@ class AUVControlGUI(QWidget):
         operation_tab = QWidget()
         navigation_tab = QWidget()
         settings_tab = QWidget()
-        manual_tab = QWidget()
 
         operation_layout = QVBoxLayout()
 
@@ -188,13 +258,11 @@ class AUVControlGUI(QWidget):
         navigation_tab.setStyleSheet("background: transparent;")
         settings_tab.setAttribute(Qt.WA_StyledBackground, True)
         settings_tab.setStyleSheet("background: transparent;")
-        manual_tab.setAttribute(Qt.WA_StyledBackground, True)
-        manual_tab.setStyleSheet("background: transparent;")
 
-        tabs.addTab(operation_tab, "OPERATION")
         tabs.addTab(navigation_tab, "NAVIGATION")
-        tabs.addTab(manual_tab, "MANUAL INPUT")
+        tabs.addTab(operation_tab, "OPERATION")
         tabs.addTab(settings_tab, "SETTINGS")
+        tabs.setCurrentIndex(0)
         outer_layout.addWidget(tabs)
         self.setLayout(outer_layout)
 
@@ -253,75 +321,7 @@ class AUVControlGUI(QWidget):
         settings_layout.addWidget(self.btn_quit)
         settings_tab.setLayout(settings_layout)
 
-        # === MANUAL INPUT TAB ===
-        manual_layout = QVBoxLayout()
 
-        # --- Step Duration Controls ---
-        duration_row = QHBoxLayout()
-        duration_row.addWidget(QLabel("STEP DURATION"))
-
-        self.manual_duration_spin = QDoubleSpinBox()
-        self.manual_duration_spin.setRange(0.1, 10.0)
-        self.manual_duration_spin.setSingleStep(0.1)
-        self.manual_duration_spin.setValue(1.0)
-        self.manual_duration_spin.hide()  # Hide the small spin box arrows
-
-        self.manual_duration_label = QLabel(f"{self.manual_duration_spin.value():.1f}s")
-        self.manual_duration_label.setAlignment(Qt.AlignCenter)
-        self.manual_duration_label.setStyleSheet("font-size: 24px;")
-
-        self.btn_step_duration_decrease = QPushButton("-")
-        self.btn_step_duration_increase = QPushButton("+")
-
-        self.btn_step_duration_decrease.clicked.connect(self.manual_duration_spin.stepDown)
-        self.btn_step_duration_increase.clicked.connect(self.manual_duration_spin.stepUp)
-        self.manual_duration_spin.valueChanged.connect(self.update_manual_duration_label)
-
-        duration_row.addWidget(self.btn_step_duration_decrease)
-        duration_row.addWidget(self.manual_duration_label)
-        duration_row.addWidget(self.btn_step_duration_increase)
-
-        manual_layout.addLayout(duration_row)
-        manual_layout.addWidget(self.manual_duration_spin)
-
-        # Manual step feedback toggle
-        self.manual_feedback_enabled = True
-        self.last_manual_button = None
-        self.btn_manual_feedback_toggle = QPushButton("STEP FEEDBACK: ON")
-        self.btn_manual_feedback_toggle.setCheckable(True)
-        self.btn_manual_feedback_toggle.setChecked(True)
-        self.btn_manual_feedback_toggle.setStyleSheet(
-            "border: 2px solid #00FF00; color: #00FF00;"
-        )
-        self.btn_manual_feedback_toggle.clicked.connect(
-            self.toggle_manual_feedback
-        )
-        manual_layout.addWidget(self.btn_manual_feedback_toggle)
-
-        # Build manual step buttons dynamically from available canned movements
-        self.manual_step_buttons = []
-        canned_re = re.compile(r'^canned_(\d+)(?:_(.*))?$')
-        method_names = [m for m in dir(self.ros_node.canned_movements) if canned_re.match(m)]
-        method_names.sort(key=lambda n: int(canned_re.match(n).group(1)))
-        for name in method_names:
-            match = canned_re.match(name)
-            suffix = match.group(2)
-            if suffix:
-                label = suffix.replace('_', ' ').upper()
-            else:
-                label = match.group(1)
-            btn = QPushButton(label)
-            btn.setFixedHeight(35)
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            method = getattr(self.ros_node.canned_movements, name)
-            btn.clicked.connect(
-                self.make_manual_step_handler(btn, method)
-            )
-            manual_layout.addWidget(btn)
-            self.manual_step_buttons.append(btn)
-
-        manual_layout.addStretch(1)
-        manual_tab.setLayout(manual_layout)
 
         # === NAVIGATION TAB ===
         navigation_layout = QVBoxLayout()
@@ -339,6 +339,14 @@ class AUVControlGUI(QWidget):
         # Left side: canned movement buttons
         nav_left_layout = QVBoxLayout()
         self.navigation_step_buttons = []
+
+        canned_re = re.compile(r"^canned_(\d+)(?:_(.*))?$")
+        method_names = [
+            name for name in dir(self.ros_node.canned_movements)
+            if canned_re.match(name)
+        ]
+        method_names.sort(key=lambda n: int(canned_re.match(n).group(1)))
+
         for name in method_names:
             match = canned_re.match(name)
             suffix = match.group(2)
@@ -362,6 +370,7 @@ class AUVControlGUI(QWidget):
         # Right side: joystick
         nav_right_layout = QVBoxLayout()
         self.navigation_joystick = VirtualJoystickWidget()
+        self.navigation_joystick.setFixedSize(200, 200)
         # Use the same callback logic as the Operations tab joystick
         self.navigation_joystick.callback = self.joystick_callback
         nav_right_layout.addWidget(self.navigation_joystick)
@@ -386,6 +395,7 @@ class AUVControlGUI(QWidget):
         self.btn_nav_duration_decrease.clicked.connect(self.navigation_duration_spin.stepDown)
         self.btn_nav_duration_increase.clicked.connect(self.navigation_duration_spin.stepUp)
         self.navigation_duration_spin.valueChanged.connect(self.update_nav_duration_label)
+        self.navigation_duration_spin.valueChanged.connect(self.step_duration_value_changed)
 
         nav_duration_row.addWidget(self.btn_nav_duration_decrease)
         nav_duration_row.addWidget(self.navigation_duration_label)
@@ -432,30 +442,28 @@ class AUVControlGUI(QWidget):
 
         # Display the last canned message that cruise mode will repeat
         self.nav_last_canned_label = QLabel("LAST CANNED: NONE")
-        self.nav_last_canned_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.nav_last_canned_label.setStyleSheet("font-size: 16px; color: #AAAAAA;")
         nav_right_layout.addWidget(self.nav_last_canned_label)
 
         # --- Status indicators (Navigation Tab) ---
         self.nav_imu_health_label = QLabel("IMU HEALTH: UNKNOWN")
-        self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+        self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #AAAAAA;")
         self.nav_imu_health_label.setFixedHeight(30)
         self.nav_imu_health_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.nav_servo_status_label = QLabel("SERVO DRIVER STATUS: UNKNOWN")
-        self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
-        # Prevent wrapping so the joystick layout doesn't shift
-        self.nav_servo_status_label.setWordWrap(False)
-        self.nav_servo_status_label.setFixedHeight(30)
+        self.nav_servo_status_label = QLabel("SERVO DRIVER STATUS\nUNKNOWN")
+        self.nav_servo_status_label.setStyleSheet("font-size: 16px; color: #AAAAAA;")
+        self.nav_servo_status_label.setWordWrap(True)
         self.nav_servo_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.nav_roll_pid_status_label = QLabel("ROLL PID: UNKNOWN")
         self.nav_roll_pid_status_label.setStyleSheet(
-            "font-size: 18px; color: #AAAAAA;"
+            "font-size: 16px; color: #AAAAAA;"
         )
         self.nav_roll_pid_status_label.setFixedHeight(30)
         self.nav_roll_pid_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.nav_pitch_pid_status_label = QLabel("PITCH PID: UNKNOWN")
         self.nav_pitch_pid_status_label.setStyleSheet(
-            "font-size: 18px; color: #AAAAAA;"
+            "font-size: 16px; color: #AAAAAA;"
         )
         self.nav_pitch_pid_status_label.setFixedHeight(30)
         self.nav_pitch_pid_status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -489,45 +497,18 @@ class AUVControlGUI(QWidget):
         operation_layout.addWidget(self.attitude_widget)
         self.ros_node.attitude_widget = self.attitude_widget
 
-        main_layout = QHBoxLayout()
-
-        # LEFT COLUMN
-        left_layout = QVBoxLayout()
+        # Initialize controls used by update logic but omit them from the layout
         self.btn_pid_toggle = QPushButton("ROLL PID: INACTIVE")
         self.btn_pid_toggle.setCheckable(True)
-        self.btn_pid_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
         self.btn_pid_toggle.clicked.connect(self.toggle_pid)
-
         self.btn_canned = QPushButton("SEND CANNED MOVEMENT")
         self.btn_duration_increase = QPushButton("DURATION +")
         self.btn_duration_decrease = QPushButton("DURATION -")
         self.btn_toggle_sticky = QPushButton("STICKY MODE: OFF")
-        self.btn_toggle_sticky.setObjectName("stickyOff")
-
-        self.btn_toggle_sticky.clicked.connect(self.toggle_sticky_mode)
-        self.btn_pid_toggle.clicked.connect(self.toggle_pid)
-        self.btn_canned.clicked.connect(self.send_canned_and_remember)
-        self.btn_duration_increase.clicked.connect(self.increase_duration)
-        self.btn_duration_decrease.clicked.connect(self.decrease_duration)
-
-        left_layout.addWidget(self.btn_pid_toggle)
-        left_layout.addWidget(self.btn_canned)
-        left_layout.addWidget(self.btn_duration_increase)
-        left_layout.addWidget(self.btn_duration_decrease)
-        left_layout.addWidget(self.btn_toggle_sticky)
-        left_layout.addStretch(1)
-        main_layout.addLayout(left_layout, 1)
-
-        # RIGHT COLUMN
-        right_layout = QVBoxLayout()
         self.virtual_joystick = VirtualJoystickWidget()
         self.virtual_joystick.callback = self.joystick_callback
 
-        right_layout.addWidget(self.virtual_joystick)
-        right_layout.addStretch(1)
-        main_layout.addLayout(right_layout, 1)
-
-        operation_layout.addLayout(main_layout)
+        # Removed manual controls and joystick to expand status area
 
         # === BOTTOM STATUS TABS ===
         status_tabs = QTabWidget()
@@ -543,6 +524,7 @@ class AUVControlGUI(QWidget):
         self.control_status_field.setReadOnly(True)
         self.control_status_field.setWordWrapMode(QTextOption.WordWrap)
         self.control_status_field.setLineWrapMode(QTextEdit.WidgetWidth)
+        self.control_status_field.setMinimumHeight(250)
         self.control_status_layout.addWidget(self.control_status_field)
         status_tabs.addTab(control_status_tab, "CONTROL STATUS")
 
@@ -553,6 +535,7 @@ class AUVControlGUI(QWidget):
         system_status_layout = QVBoxLayout(system_status_tab)
         self.status_display = QTextEdit()
         self.status_display.setReadOnly(True)
+        self.status_display.setMinimumHeight(250)
         system_status_layout.addWidget(self.status_display)
         status_tabs.addTab(system_status_tab, "SYSTEM STATUS")
         
@@ -607,6 +590,15 @@ class AUVControlGUI(QWidget):
         self.update_lifecycle_buttons()
         self.update_pid_button_state()
 
+        # === Track last displayed status values ===
+        self.last_servo_status = None
+        self.last_roll_pid_state = None
+        self.last_pitch_pid_state = None
+        # Track last synced control values to avoid redundant updates
+        self.last_step_duration = None
+        self.last_cruise_delay = None
+        self.last_cruise_enabled = None
+
 
         
     def adjust_control_status_height(self):
@@ -621,6 +613,8 @@ class AUVControlGUI(QWidget):
 
         
     def toggle_sticky_mode(self):
+        if not hasattr(self, 'virtual_joystick'):
+            return
         new_mode = not self.virtual_joystick.sticky_mode
         self.virtual_joystick.sticky_mode = new_mode
         if hasattr(self, 'navigation_joystick'):
@@ -643,41 +637,47 @@ class AUVControlGUI(QWidget):
             self.btn_cruise_toggle.setText("CRUISE: OFF")
             self.btn_cruise_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
 
-    def toggle_manual_feedback(self):
-        self.manual_feedback_enabled = not self.manual_feedback_enabled
-        if self.manual_feedback_enabled:
-            self.btn_manual_feedback_toggle.setText("STEP FEEDBACK: ON")
-            self.btn_manual_feedback_toggle.setStyleSheet(
-                "border: 2px solid #00FF00; color: #00FF00;"
-            )
+    def on_cruise_enabled_update(self, enabled: bool):
+        """Update cruise toggle when state changes via ROS."""
+        self.btn_cruise_toggle.setChecked(enabled)
+        if enabled:
+            self.btn_cruise_toggle.setText("CRUISE: ON")
+            self.btn_cruise_toggle.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
         else:
-            self.btn_manual_feedback_toggle.setText("STEP FEEDBACK: OFF")
-            self.btn_manual_feedback_toggle.setStyleSheet(
-                "border: 2px solid #FF4500; color: #FF4500;"
-            )
-            if self.last_manual_button:
-                self.last_manual_button.setStyleSheet("border: 2px solid #00FFFF;")
+            self.btn_cruise_toggle.setText("CRUISE: OFF")
+            self.btn_cruise_toggle.setStyleSheet("border: 2px solid #FF4500; color: #FF4500;")
+        self.last_cruise_enabled = enabled
 
-    def highlight_manual_button(self, btn):
-        if self.last_manual_button:
-            self.last_manual_button.setStyleSheet("border: 2px solid #00FFFF;")
-        btn.setStyleSheet("border: 2px solid #00FF00; color: #00FF00;")
-        self.last_manual_button = btn
+    def on_cruise_delay_update(self, delay: float):
+        """Update cruise interval spin box from ROS."""
+        self.cruise_interval_spin.blockSignals(True)
+        self.cruise_interval_spin.setValue(delay)
+        self.cruise_interval_spin.blockSignals(False)
+        self.update_cruise_interval_label()
+        self.last_cruise_delay = delay
 
-    def make_manual_step_handler(self, btn, method):
-        def handler():
-            dur = self.manual_duration_spin.value()
-            method(duration_scale=dur)
-            self.ros_node.last_canned_callback = lambda: method(duration_scale=dur)
-            if self.manual_feedback_enabled:
-                self.highlight_manual_button(btn)
-        return handler
+    def on_step_duration_update(self, duration: float):
+        """Sync step duration spin boxes when changed externally."""
+        if hasattr(self, "navigation_duration_spin"):
+            self.navigation_duration_spin.blockSignals(True)
+            self.navigation_duration_spin.setValue(duration)
+            self.navigation_duration_spin.blockSignals(False)
+            self.update_nav_duration_label()
+
+        self.last_step_duration = duration
+
+    def step_duration_value_changed(self, value: float):
+        """Propagate step duration changes to the ROS node."""
+        self.ros_node.set_step_duration(float(value))
+
 
     def make_nav_step_handler(self, method):
         def handler():
             dur = self.navigation_duration_spin.value()
             method(duration_scale=dur)
-            self.ros_node.last_canned_callback = lambda: method(duration_scale=dur)
+            self.ros_node.last_canned_callback = (
+                lambda: method(duration_scale=self.navigation_duration_spin.value())
+            )
         return handler
 
     def send_canned_and_remember(self):
@@ -687,7 +687,13 @@ class AUVControlGUI(QWidget):
         
         
     def quit_app(self):
+        self.cleanup_external_nodes()
         QApplication.quit()
+
+    def closeEvent(self, event):
+        self.cleanup_external_nodes()
+        QApplication.quit()
+        event.accept()
 
     def increase_duration(self):
         self.ros_node.canned_duration_factor += self.ros_node.DURATION_STEP
@@ -698,9 +704,6 @@ class AUVControlGUI(QWidget):
         self.ros_node.canned_duration_factor = max(0.1, new_factor)
         #self.ros_node.get_logger().info(f"DURATION FACTOR DECREASED: {self.ros_node.canned_duration_factor:.2f}")
 
-
-    def update_manual_duration_label(self):
-        self.manual_duration_label.setText(f"{self.manual_duration_spin.value():.1f}s")
 
     def update_nav_duration_label(self):
         self.navigation_duration_label.setText(f"{self.navigation_duration_spin.value():.1f}s")
@@ -774,6 +777,9 @@ class AUVControlGUI(QWidget):
             f"CURRENT ROLL: {colorize(current_roll)}<br>"
             f"SERVO ANGLES:<br>{servo_text}<br>"
             f"CANNED DURATION FACTOR: {factor_str}<br>"
+            f"STEP DURATION: {self.ros_node.step_duration:.1f}s<br>"
+            f"CRUISE: {'ON' if self.ros_node.cruise_enabled else 'OFF'}<br>"
+            f"CRUISE INTERVAL: {self.ros_node.cruise_delay:.1f}s<br>"
             f"LAST COMMAND SENT: {self.ros_node.last_command}"
         )
 
@@ -872,73 +878,87 @@ class AUVControlGUI(QWidget):
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Orange
             if hasattr(self, 'nav_imu_health_label'):
                 self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health}")
-                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #FFA500;")
+                self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #FFA500;")
         elif "RESTARTING" in normalized:
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red
             if hasattr(self, 'nav_imu_health_label'):
                 self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health}")
-                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #FF4500;")
+                self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #FF4500;")
         else:
             # Display unrecognised status text directly
             self.imu_health_label.setText(f"IMU HEALTH: {imu_health or 'UNKNOWN'}")
             self.imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
             if hasattr(self, 'nav_imu_health_label'):
                 self.nav_imu_health_label.setText(f"IMU HEALTH: {imu_health or 'UNKNOWN'}")
-                self.nav_imu_health_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
+                self.nav_imu_health_label.setStyleSheet("font-size: 16px; color: #AAAAAA;")
             
         servo_status = self.ros_node.servo_driver_status
-        self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
-        if hasattr(self, 'nav_servo_status_label'):
-            short_status = servo_status
-            if len(short_status) > 30:
-                short_status = short_status[:27] + "..."
-            self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS: {short_status}")
+        if servo_status != getattr(self, 'last_servo_status', None):
+            self.servo_status_label.setText(f"SERVO DRIVER STATUS: {servo_status}")
+            if hasattr(self, 'nav_servo_status_label'):
+                short_status = servo_status
+                if len(short_status) > 30:
+                    short_status = short_status[:27] + "..."
+                self.nav_servo_status_label.setText(f"SERVO DRIVER STATUS\n{short_status}")
+
+            if "NOMINAL" in servo_status.upper():
+                color = "#00FF00"
+            elif "BUSY" in servo_status.upper():
+                color = "#FFA500"
+            elif "UNKNOWN" in servo_status.upper():
+                color = "#AAAAAA"
+            else:
+                color = "#FF4500"
+            self.servo_status_label.setStyleSheet(f"font-size: 18px; color: {color};")
+            if hasattr(self, 'nav_servo_status_label'):
+                self.nav_servo_status_label.setStyleSheet(f"font-size: 16px; color: {color};")
+
+            self.last_servo_status = servo_status
 
         if hasattr(self, 'nav_last_canned_label'):
-            self.nav_last_canned_label.setText(f"LAST CANNED: {self.ros_node.last_command}")
-
-        if "NOMINAL" in servo_status.upper():
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")  # Green
-            if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #00FF00;")
-        elif "BUSY" in servo_status.upper():
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FFA500;")  # Yellow / Orange
-            if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #FFA500;")
-        elif "UNKNOWN" in servo_status.upper():
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")  # Gray
-            if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #AAAAAA;")
-        else:
-            self.servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")  # Red for anything else (errors, faults)
-            if hasattr(self, 'nav_servo_status_label'):
-                self.nav_servo_status_label.setStyleSheet("font-size: 18px; color: #FF4500;")
+            movement = self.ros_node.last_movement_type
+            self.nav_last_canned_label.setText(f"LAST CANNED: {movement}")
 
         # === Update PID Status Labels (Navigation Tab) ===
         if hasattr(self, 'nav_roll_pid_status_label'):
-            if self.ros_node.roll_pid_enabled:
-                self.nav_roll_pid_status_label.setText("ROLL PID: ACTIVE")
-                self.nav_roll_pid_status_label.setStyleSheet(
-                    "font-size: 18px; color: #00FF00;"
-                )
-            else:
-                self.nav_roll_pid_status_label.setText("ROLL PID: INACTIVE")
-                self.nav_roll_pid_status_label.setStyleSheet(
-                    "font-size: 18px; color: #FF4500;"
-                )
+            current_state = "ACTIVE" if self.ros_node.roll_pid_enabled else "INACTIVE"
+            if current_state != getattr(self, 'last_roll_pid_state', None):
+                color = "#00FF00" if self.ros_node.roll_pid_enabled else "#FF4500"
+                self.nav_roll_pid_status_label.setText(f"ROLL PID: {current_state}")
+                self.nav_roll_pid_status_label.setStyleSheet(f"font-size: 16px; color: {color};")
+                self.last_roll_pid_state = current_state
 
         if hasattr(self, 'nav_pitch_pid_status_label'):
-            if self.ros_node.tail_pid_enabled:
-                self.nav_pitch_pid_status_label.setText("PITCH PID: ACTIVE")
-                self.nav_pitch_pid_status_label.setStyleSheet(
-                    "font-size: 18px; color: #00FF00;"
-                )
-            else:
-                self.nav_pitch_pid_status_label.setText("PITCH PID: INACTIVE")
-                self.nav_pitch_pid_status_label.setStyleSheet(
-                    "font-size: 18px; color: #FF4500;"
-                )
+            pitch_state = "ACTIVE" if self.ros_node.tail_pid_enabled else "INACTIVE"
+            if pitch_state != getattr(self, 'last_pitch_pid_state', None):
+                color = "#00FF00" if self.ros_node.tail_pid_enabled else "#FF4500"
+                self.nav_pitch_pid_status_label.setText(f"PITCH PID: {pitch_state}")
+                self.nav_pitch_pid_status_label.setStyleSheet(f"font-size: 16px; color: {color};")
+                self.last_pitch_pid_state = pitch_state
+
+        # --- Keep control widgets in sync with ROS state ---
+        step_dur_changed = (
+            self.ros_node.step_duration != getattr(self, 'last_step_duration', None)
+        )
+        if step_dur_changed:
+            self.on_step_duration_update(self.ros_node.step_duration)
+
+        cruise_delay_changed = (
+            self.ros_node.cruise_delay != getattr(self, 'last_cruise_delay', None)
+        )
+        if cruise_delay_changed and (
+            abs(self.cruise_interval_spin.value() - self.ros_node.cruise_delay) > 1e-3
+        ):
+            self.on_cruise_delay_update(self.ros_node.cruise_delay)
+
+        cruise_enabled_changed = (
+            self.ros_node.cruise_enabled != getattr(self, 'last_cruise_enabled', None)
+        )
+        if cruise_enabled_changed and (
+            self.btn_cruise_toggle.isChecked() != self.ros_node.cruise_enabled
+        ):
+            self.on_cruise_enabled_update(self.ros_node.cruise_enabled)
             
 
 
