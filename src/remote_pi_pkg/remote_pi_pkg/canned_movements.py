@@ -43,30 +43,51 @@ class CannedMovements:
         return commands
 
     def _fill_current_placeholders(self, commands):
-        """Replace ``None`` or NaN target angles with current servo angles."""
+        """Replace ``None`` or NaN target angles with current servo angles.
+
+        Returns ``(commands, valid)`` where ``valid`` is ``False`` if any
+        placeholders could not be filled (i.e. angles remain ``math.nan``).
+        """
         servo_nums = commands.get('servo_numbers', [])
         if not servo_nums:
-            return commands
+            return commands, True
 
         angles = list(commands.get('target_angles', []))
         current = getattr(self.ros, 'current_servo_angles', None)
-        if not current or len(current) <= max(servo_nums):
-            return commands
 
         step = len(servo_nums)
-        for i, angle in enumerate(angles):
+        if current and len(current) > max(servo_nums):
+            for i, angle in enumerate(angles):
+                if angle is None or (isinstance(angle, float) and math.isnan(angle)):
+                    servo_idx = servo_nums[i % step]
+                    try:
+                        angles[i] = float(current[servo_idx])
+                    except Exception:
+                        pass
+
+        # Check for unresolved placeholders
+        invalid = False
+        for angle in angles:
             if angle is None or (isinstance(angle, float) and math.isnan(angle)):
-                servo_idx = servo_nums[i % step]
-                try:
-                    angles[i] = float(current[servo_idx])
-                except Exception:
-                    pass
+                invalid = True
+                break
+
+        if invalid:
+            self.ros.get_logger().warn(
+                "Current servo angles unavailable; some target angles remain NaN."
+            )
+
         commands['target_angles'] = angles
-        return commands
+        return commands, not invalid
 
     def _publish(self, commands):
         commands = self._prepend_current_positions(commands)
-        commands = self._fill_current_placeholders(commands)
+        commands, valid = self._fill_current_placeholders(commands)
+        if not valid:
+            self.ros.get_logger().warn(
+                "Skipping canned movement publication due to unresolved target angles."
+            )
+            return
         servo_nums = commands['servo_numbers']
         wing_used = any(n in [0, 1, 2, 3] for n in servo_nums)
         tail_used = any(n in [4, 5] for n in servo_nums)
@@ -364,7 +385,7 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [None, 165.0, None, 105.0, #pitch up
+            'target_angles': [math.nan, 165.0, math.nan, 105.0, #pitch up
                              0.0, 165.0, 180.0, 105.0, # Swing up
                              0.0, 135.0, 180.0, 135.0], # Pitch to neutral
             'durations': adjusted,
@@ -390,7 +411,7 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [None, 105.0, None, 165.0, # Pitch Down
+            'target_angles': [math.nan, 105.0, math.nan, 165.0, # Pitch Down
                              90.0, 105.0, 90.0, 165.0, # Swing down
                              90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
@@ -416,7 +437,7 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [None, 165.0, None, 105.0, # Pitch Up
+            'target_angles': [math.nan, 165.0, math.nan, 105.0, # Pitch Up
                              90.0, 165.0, 90.0, 105.0, # Swing up
                              90.0, 135.0, 90.0, 135.0], # Pitch to neutral
             'durations': adjusted,
@@ -442,7 +463,7 @@ class CannedMovements:
         ]
         commands = {
             'servo_numbers': [0, 1, 2, 3],
-            'target_angles': [None, 105.0, None, 165.0, # Pitch DOWN
+            'target_angles': [math.nan, 105.0, math.nan, 165.0, # Pitch DOWN
                              180.0, 105.0, 0.0, 165.0, # Swing DOWN
                              180.0, 135.0, 0.0, 135.0], # Pitch to neutral
             'durations': adjusted,
