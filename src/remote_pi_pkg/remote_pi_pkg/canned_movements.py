@@ -43,10 +43,14 @@ class CannedMovements:
         return commands
 
     def _fill_current_placeholders(self, commands):
-        """Replace ``None`` or NaN target angles with current servo angles.
+        """Replace ``None`` or ``math.nan`` target angles with current servo angles.
 
         Returns ``(commands, valid)`` where ``valid`` is ``False`` if any
-        placeholders could not be filled (i.e. angles remain ``math.nan``).
+        placeholders could not be filled (i.e. angles remain ``None``).
+
+        ``math.nan`` values that remain after attempting to populate the
+        placeholders are considered intentional and do not invalidate the
+        command.
         """
         servo_nums = commands.get('servo_numbers', [])
         if not servo_nums:
@@ -66,26 +70,27 @@ class CannedMovements:
                         pass
 
         # Check for unresolved placeholders
-        invalid = False
-        for angle in angles:
-            if angle is None or (isinstance(angle, float) and math.isnan(angle)):
-                invalid = True
-                break
+        none_unresolved = any(angle is None for angle in angles)
+        nan_unresolved = any(isinstance(angle, float) and math.isnan(angle) for angle in angles)
 
-        if invalid:
+        if none_unresolved:
             self.ros.get_logger().warn(
-                "Current servo angles unavailable; some target angles remain NaN."
+                "Current servo angles unavailable; some target angles remain unset (None)."
+            )
+        if nan_unresolved:
+            self.ros.get_logger().info(
+                "Publishing canned movement with NaN target angles as placeholders."
             )
 
         commands['target_angles'] = angles
-        return commands, not invalid
+        return commands, not none_unresolved
 
     def _publish(self, commands):
         commands = self._prepend_current_positions(commands)
         commands, valid = self._fill_current_placeholders(commands)
         if not valid:
             self.ros.get_logger().warn(
-                "Skipping canned movement publication due to unresolved target angles."
+                "Skipping canned movement publication due to unresolved target angles (None)."
             )
             return
         servo_nums = commands['servo_numbers']
