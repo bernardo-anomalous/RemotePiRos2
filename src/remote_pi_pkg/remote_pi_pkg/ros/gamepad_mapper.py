@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
-from std_msgs.msg import Float32, Bool, String
+from std_msgs.msg import Float32, Bool, String, Float32MultiArray
 from auv_custom_interfaces.msg import ServoMovementCommand
 from remote_pi_pkg import CannedMovements
 import threading
@@ -45,10 +45,13 @@ class GamepadMapper(Node):
         self.last_canned_callback = None
         self.cruise_timer = None
         self.last_command = ""
+        self.current_servo_angles: list[float] = []
 
         self.canned_movements = CannedMovements(self)
         self.create_subscription(String, 'servo_driver_status',
                                  self.servo_status_callback, 10)
+        self.create_subscription(Float32MultiArray, 'current_servo_angles',
+                                 self.current_servo_angles_callback, 10)
 
         # Map joystick button indices to handler methods. Indices refer to the
         # order provided by the Joy message from the controller.
@@ -241,6 +244,9 @@ class GamepadMapper(Node):
         """Increase delay between cruise cycles."""
         self.cruise_delay += 0.5
         self.cruise_delay_pub.publish(Float32(data=self.cruise_delay))
+
+    def current_servo_angles_callback(self, msg: Float32MultiArray):
+        self.current_servo_angles = list(msg.data)
 
     def servo_status_callback(self, msg: String):
         self.servo_driver_status = msg.data
