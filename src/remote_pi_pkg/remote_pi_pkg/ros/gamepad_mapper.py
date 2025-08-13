@@ -162,7 +162,12 @@ class GamepadMapper(Node):
 
         for idx, action in self.button_actions.items():
             if pressed(idx):
-                action()
+                try:
+                    action()
+                except Exception:
+                    self.get_logger().exception(
+                        f"Error executing action for button {idx}"
+                    )
 
         self.last_buttons = list(msg.buttons)
 
@@ -177,11 +182,21 @@ class GamepadMapper(Node):
             if prev <= self.axis_threshold and val > self.axis_threshold:
                 handler = actions.get('positive')
                 if handler:
-                    handler()
+                    try:
+                        handler()
+                    except Exception:
+                        self.get_logger().exception(
+                            f"Error executing positive axis action for axis {idx}"
+                        )
             elif prev >= -self.axis_threshold and val < -self.axis_threshold:
                 handler = actions.get('negative')
                 if handler:
-                    handler()
+                    try:
+                        handler()
+                    except Exception:
+                        self.get_logger().exception(
+                            f"Error executing negative axis action for axis {idx}"
+                        )
             if idx < len(self.last_axes):
                 self.last_axes[idx] = val
 
