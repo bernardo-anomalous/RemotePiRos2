@@ -160,13 +160,19 @@ class GamepadMapper(Node):
             self.last_press_times[index] = time.time()
             return True
 
-        for idx, action in self.button_actions.items():
+        for idx in range(len(msg.buttons)):
             if pressed(idx):
-                try:
-                    action()
-                except Exception:
-                    self.get_logger().exception(
-                        f"Error executing action for button {idx}"
+                action = self.button_actions.get(idx)
+                if action:
+                    try:
+                        action()
+                    except Exception:
+                        self.get_logger().exception(
+                            f"Error executing action for button {idx}"
+                        )
+                else:
+                    self.get_logger().debug(
+                        f"Unmapped button {idx} pressed"
                     )
 
         self.last_buttons = list(msg.buttons)
