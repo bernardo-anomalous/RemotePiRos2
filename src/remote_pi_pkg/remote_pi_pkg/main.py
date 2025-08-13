@@ -58,17 +58,26 @@ def main():
 
     # Launch input nodes alongside the GUI in their own sessions so we can
     # cleanly terminate the entire process groups.
-    joy_proc = subprocess.Popen(
-        ['ros2', 'run', 'joy', 'joy_node'], start_new_session=True
-    )
-    mapper_proc = subprocess.Popen(
-        ['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'],
-        start_new_session=True,
-    )
-    procs = [
-        ('joy_node', joy_proc),
-        ('gamepad_mapper', mapper_proc),
-    ]
+    procs = []
+    try:
+        joy_proc = subprocess.Popen(
+            ['ros2', 'run', 'joy', 'joy_node'], start_new_session=True
+        )
+        procs.append(('joy_node', joy_proc))
+    except Exception as exc:  # pragma: no cover - subprocess failure is rare
+        logger.error("Failed to launch joy_node: %s", exc)
+        sys.exit(1)
+    try:
+        mapper_proc = subprocess.Popen(
+            ['ros2', 'run', 'remote_pi_pkg', 'gamepad_mapper'],
+            start_new_session=True,
+        )
+        procs.append(('gamepad_mapper', mapper_proc))
+    except Exception as exc:  # pragma: no cover - subprocess failure is rare
+        logger.error("Failed to launch gamepad_mapper: %s", exc)
+        cleanup_processes(procs)
+        sys.exit(1)
+    
     atexit.register(cleanup_processes, procs)
     exit_code = 0
     ros_node = None
